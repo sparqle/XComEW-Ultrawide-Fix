@@ -17,8 +17,9 @@ The installer will try to find your XCOM installation folder in the usual places
 browse to your "XCom-Enemy-Unknown" directory (not the XEW directory inside it).
 
 1. Close the game.
-2. Run `XComEW-Ultrawide-Fix.exe` and enter your `XCom-Enemy-Unknown` installation folder if needed.
-3. Click **Install** to install.
+3. Extract entire archive into a directory.  
+4. Run `XComEW-Ultrawide-Fix.exe` and enter your `XCom-Enemy-Unknown` installation folder if needed.
+5. Click **Install** to install.
 
 It will binary patch `XComEW.exe` and use the PatchUPK from [UPKUtils](https://github.com/wghost/UPKUtils) to modify
 `XComGame.upk`.
