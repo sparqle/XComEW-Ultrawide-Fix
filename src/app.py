@@ -16,6 +16,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 import exe_patcher as exe_patch
+from version import VERSION
 
 APP = "XCOM EW Ultrawide Fix"
 STATE = ".ultrawide-fix.json"
@@ -320,13 +321,13 @@ class LogStream:
 class Window:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title(APP)
+        self.root.title(f"{APP} v{VERSION}")
         self.root.geometry("760x420")
         self.base = tk.StringVar()
         self.skip_hp = tk.BooleanVar(value=False)
         main = ttk.Frame(self.root, padding=16)
         main.pack(fill="both", expand=True)
-        ttk.Label(main, text="XCOM: Enemy Within — Ultrawide Fix", font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(0, 14))
+        ttk.Label(main, text=f"XCOM: Enemy Within - Ultrawide Fix - v{VERSION}", font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(0, 14))
         self.row(main, "XCom-Enemy-Unknown Folder", self.base, self.choose_base)
         ttk.Checkbutton(main, text="Skip installing/restoring HP bar patch (XComGame.upk), I will patch it myself using PatcherGUI or PatchUPK.", variable=self.skip_hp).pack(anchor="w", pady=12)
         buttons = ttk.Frame(main)
