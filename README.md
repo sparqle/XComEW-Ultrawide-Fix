@@ -115,6 +115,12 @@ This function was patched from the linear algorithm:
 Additionally, FOV adjustments are always applied, the maps `Command1`, `CIN_LoadScreen`, and `CIN_HQLoadScreen` are no
 longer excluded.
 
+## License
+
+This project's original code, documentation, and artwork are available under the [MIT license](LICENSE).
+The bundled UPKUtils executables retain their GPLv2 license. See [third-party notices](third_party/README.md)
+for the included licenses, corresponding 7.3 source snapshot, and verified binary provenance.
+
 ## Tools used
 
 Many thanks to the following utilities that made this fix possible:

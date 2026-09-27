@@ -92,7 +92,7 @@ def app_folder() -> Path:
 
 
 def binaries_folder() -> Path:
-    return app_folder() / "binaries"
+    return app_folder() / "third_party"
 
 
 def patch_script() -> Path:

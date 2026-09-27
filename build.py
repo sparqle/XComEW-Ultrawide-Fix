@@ -65,12 +65,9 @@ def main() -> int:
     mods = ROOT / "dist" / "mods"
     mods.mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "mods" / "Fix-ultrawide-Tactical.txt", mods)
-    binaries = ROOT / "binaries"
-    if binaries.is_dir():
-        destination = ROOT / "dist" / "binaries"
-        shutil.copytree(binaries, destination, dirs_exist_ok=True)
-        print(f"Copied binaries to {destination}")
     shutil.copy2(ROOT / "README.md", ROOT / "dist" / "README.md")
+    shutil.copy2(ROOT / "LICENSE", ROOT / "dist" / "LICENSE")
+    shutil.copytree(ROOT / "third_party", ROOT / "dist" / "third_party", dirs_exist_ok=True)
     dist = ROOT / "dist"
     (dist / "backups").mkdir(exist_ok=True)
     archive = dist / f"{NAME}-{VERSION}.zip"
@@ -78,9 +75,11 @@ def main() -> int:
     with ZipFile(archive, "w", compression=ZIP_DEFLATED) as bundle:
         bundle.writestr("backups/", b"")
         for path in sorted(dist.rglob("*")):
-            if not path.is_file() or path.suffix.lower() == ".zip":
+            if not path.is_file():
                 continue
             relative = path.relative_to(dist)
+            if path.suffix.lower() == ".zip" and relative.parts[0] != "third_party":
+                continue
             if relative.parts[0].lower() == "backups":
                 continue
             if relative.as_posix().lower() == CONFIG.lower():
