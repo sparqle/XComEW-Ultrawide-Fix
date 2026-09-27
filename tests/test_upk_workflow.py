@@ -189,6 +189,36 @@ class UpkWorkflowTests(unittest.TestCase):
         with self.assertRaisesRegex(FileNotFoundError, "No complete backup"):
             app.latest_backup()
 
+    def test_matching_backup_replacement_and_failure_recovery(self):
+        app.save_state(self.exe, {"version": 2, "components": {}})
+        backup = app.backup_directory(self.exe) / self.exe.name
+        backup.write_bytes(b"exe")
+        undo = backup.parent / "Fix-ultrawide-Tactical.uninstall.txt"
+        undo.write_bytes(b"old undo")
+        def install_exe(path, *, dry_run, show_hash, backup_path=None):
+            if not dry_run:
+                self.assertFalse(backup_path.exists())
+                backup_path.write_bytes(path.read_bytes())
+                path.write_bytes(b"patched exe")
+                raise RuntimeError("commit failed")
+            return 0
+        with patch.object(app.exe_patch, "install", side_effect=install_exe), \
+                patch.object(app.exe_patch, "inspect"), \
+                patch.object(app.exe_patch, "is_fully_patched", return_value=False), \
+                patch.object(app, "stage_upk", return_value=(b"patched upk", b"new undo")):
+            with self.assertRaises(FileExistsError):
+                app.install(self.root, self.root, lambda _: None)
+            with self.assertRaisesRegex(RuntimeError, "commit failed"):
+                app.install(self.root, self.root, lambda _: None, replace_backup=True)
+            self.assertEqual(backup.read_bytes(), b"exe")
+            self.assertEqual(undo.read_bytes(), b"old undo")
+            self.assertEqual(self.exe.read_bytes(), b"exe")
+            backup.write_bytes(b"different")
+            with self.assertRaisesRegex(ValueError, "different hash"):
+                app.install(self.root, self.root, lambda _: None, replace_backup=True)
+            self.assertEqual(backup.read_bytes(), b"different")
+            self.assertEqual(undo.read_bytes(), b"old undo")
+
 
 if __name__ == "__main__":
     unittest.main()

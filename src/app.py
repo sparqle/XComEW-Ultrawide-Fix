@@ -157,7 +157,7 @@ def stage_upk(upk: Path, folder: Path, script: Path, *, uninstall: bool = False)
         return unpacked.read_bytes(), undo
 
 
-def install(base: Path, folder: Path, log) -> None:
+def install(base: Path, folder: Path, log, *, replace_backup: bool = False) -> None:
     log('--- Installing... ---')
     exe, upk = locations(base)
     state = load_state(exe)
@@ -187,17 +187,26 @@ def install(base: Path, folder: Path, log) -> None:
     written = []
     backup_dir = backup_directory(exe)
     exe_backup = backup_dir / exe.name
+    previous_backup = None
+    if "exe" in originals and exe_backup.exists():
+        if not replace_backup:
+            raise FileExistsError(f"EXE backup already exists: {exe_backup}")
+        previous_backup = exe_backup.read_bytes()
+        if previous_backup != originals["exe"]:
+            raise ValueError("Existing EXE backup has a different hash; refusing to replace it.")
     backup_created = False
     sidecar_data = size_file(upk).read_bytes() if "upk" in originals and size_file(upk).exists() else None
     uninstall_path = None
+    previous_uninstall = None
     try:
         backup_dir.mkdir(parents=True, exist_ok=True)
         if uninstall_data is not None:
             uninstall_path = backup_dir / Path(SCRIPT).with_suffix(".uninstall.txt").name
+            previous_uninstall = uninstall_path.read_bytes() if uninstall_path.exists() else None
             write_atomic(uninstall_path, uninstall_data)
         if "exe" in originals:
-            if exe_backup.exists():
-                raise FileExistsError(f"EXE backup already exists: {exe_backup}")
+            if previous_backup is not None:
+                exe_backup.unlink()
             backup_created = True
         for key, target in pending:
             original_hash = hashlib.sha256(originals[key]).hexdigest()
@@ -228,8 +237,13 @@ def install(base: Path, folder: Path, log) -> None:
         save_state(exe, state)
         if backup_created and exe_backup.exists():
             exe_backup.unlink()
+        if previous_backup is not None:
+            write_atomic(exe_backup, previous_backup)
         if uninstall_path is not None:
-            uninstall_path.unlink(missing_ok=True)
+            if previous_uninstall is None:
+                uninstall_path.unlink(missing_ok=True)
+            else:
+                write_atomic(uninstall_path, previous_uninstall)
         raise
 
 
@@ -453,6 +467,18 @@ class Window:
             return
         self.save_base()
         base, folder = Path(value), binaries_folder()
+        if action is install:
+            try:
+                exe, _ = locations(base)
+                backup = backup_directory(exe) / exe.name
+                needs_backup = "exe" not in load_state(exe)["components"]
+                if needs_backup and backup.is_file() and digest(backup) == digest(exe):
+                    if not messagebox.askyesno(APP, f"An existing backup has the same SHA-256 hash as XComEW.exe.\n\n{backup}\n\nReplace this backup and continue installing?", default="no"):
+                        return
+                    action = lambda base, folder, log: install(base, folder, log, replace_backup=True)
+            except Exception as exc:
+                messagebox.showerror(APP, str(exc))
+                return
         if action is force_restore:
             try:
                 backup = latest_backup()
