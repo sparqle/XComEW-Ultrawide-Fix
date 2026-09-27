@@ -1,0 +1,9 @@
+# XCOM: Enemy Within ultrawide fix
+
+Run `build-windows.bat` on Windows with Python 3 installed. It produces `dist\XComEW-Ultrawide-Fix.exe`, a standalone Windows UI with the EXE patch and HP bar patch script embedded. Python is only required to build it.
+
+For the HP bar patch, supply Windows `DecompressLZO.exe` and `PatchUPK.exe` from [UPKUtils](https://github.com/wghost/UPKUtils). Put both in a `binaries` folder beside `XComEW-Ultrawide-Fix.exe` (for a source run, beside `ultrawide_app.py`). These executables are **not included**. PatcherGUI.exe is unnecessary. If you check the skip HP bar option, neither tool is needed and only `XComEW.exe` is modified or restored.
+
+Select the `XCom-Enemy-Unknown` directory, leave the skip HP bar option unchecked to install or restore both, and click Install or Restore. The app derives `XEW\Binaries\Win32\XComEW.exe` and `XEW\XComGame\CookedPCConsole\XComGame.upk`. It stages UPK operations outside the game directory; if DecompressLZO reports the UPK is already decompressed, it stages a copy. It records hashes in `XEW\Binaries\Win32\.ultrawide-fix.json` and keeps an EXE backup beside the executable. No permanent UPK backup is created. Keep the EXE backup and state file until restored. Close the game first.
+
+The EXE must have all three original byte sequences from the supplied Python patcher. Other builds, partial patches, or an EXE previously patched by another tool are rejected. Restore copies the verified EXE backup and applies the supplied `Fix-ultrawide-HPBars.txt.uninstall.txt` with PatchUPK. Restore only manages patches installed through this app; externally installed PatcherGUI patches must be restored with that tool. If PatchUPK fails, the game UPK stays untouched. Restoring via the uninstall script restores its game data, not necessarily its original compressed bytes.
