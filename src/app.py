@@ -44,15 +44,13 @@ def write_atomic(path: Path, data: bytes) -> None:
                 os.unlink(name)
 
 
-def locations(base: Path, hp: bool = True) -> tuple[Path, Path]:
+def locations(base: Path) -> tuple[Path, Path]:
     base = base.resolve()
     root = base / "XEW"
     exe = root / "Binaries" / "Win32" / "XComEW.exe"
     if not exe.is_file():
         raise FileNotFoundError(f"Expected XComEW.exe at {exe}. Select the XCom-Enemy-Unknown directory.")
     upk_dir = root / "XComGame" / "CookedPCConsole"
-    if not hp:
-        return exe, upk_dir / "XComGame.upk"
     matches = [p for p in upk_dir.glob("*.upk") if p.name.lower() == "xcomgame.upk"] if upk_dir.is_dir() else []
     if len(matches) != 1:
         raise FileNotFoundError(f"Expected XComGame.upk in {upk_dir}")
@@ -147,10 +145,10 @@ def stage_upk(upk: Path, folder: Path, script: Path, *, uninstall: bool = False)
         return unpacked.read_bytes(), undo
 
 
-def install(base: Path, folder: Path, hp: bool, log) -> None:
-    exe, upk = locations(base, hp)
+def install(base: Path, folder: Path, log) -> None:
+    exe, upk = locations(base)
     state = load_state(exe)
-    targets = [("exe", exe)] + ([("upk", upk)] if hp else [])
+    targets = [("exe", exe), ("upk", upk)]
     for key, target in targets:
         record = state["components"].get(key)
         if record:
@@ -220,10 +218,10 @@ def install(base: Path, folder: Path, hp: bool, log) -> None:
         raise
 
 
-def restore(base: Path, folder: Path, hp: bool, log) -> None:
-    exe, upk = locations(base, hp)
+def restore(base: Path, folder: Path, log) -> None:
+    exe, upk = locations(base)
     state = load_state(exe)
-    selected = [("exe", exe)] + ([("upk", upk)] if hp else [])
+    selected = [("exe", exe), ("upk", upk)]
     ready = []
     for key, path in selected:
         rec = state["components"].get(key)
@@ -287,15 +285,14 @@ def check_result(result: int) -> None:
         raise RuntimeError(f"EXE patcher returned error {result}; see the log for details.")
 
 
-def status(base: Path, folder: Path, hp: bool, log) -> None:
-    exe, upk = locations(base, hp)
+def status(base: Path, folder: Path, log) -> None:
+    exe, upk = locations(base)
     check_result(exe_patch.status(exe, show_hash=True))
-    if hp:
-        record = load_state(exe)["components"].get("upk")
-        if not record:
-            log(f"{upk.name}: no managed installation")
-        else:
-            log(f"{upk.name}: " + ("installed" if digest(upk) == record["patched_sha256"] else "changed since installation"))
+    record = load_state(exe)["components"].get("upk")
+    if not record:
+        log(f"{upk.name}: no managed installation")
+    else:
+        log(f"{upk.name}: " + ("installed" if digest(upk) == record["patched_sha256"] else "changed since installation"))
 
 
 class LogStream:
@@ -324,12 +321,10 @@ class Window:
         self.root.title(f"{APP} v{VERSION}")
         self.root.geometry("760x420")
         self.base = tk.StringVar()
-        self.skip_hp = tk.BooleanVar(value=False)
         main = ttk.Frame(self.root, padding=16)
         main.pack(fill="both", expand=True)
         ttk.Label(main, text=f"XCOM: Enemy Within - Ultrawide Fix - v{VERSION}", font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(0, 14))
         self.row(main, "XCom-Enemy-Unknown Folder", self.base, self.choose_base)
-        ttk.Checkbutton(main, text="Skip installing/restoring HP bar patch (XComGame.upk), I will patch it myself using PatcherGUI or PatchUPK.", variable=self.skip_hp).pack(anchor="w", pady=12)
         buttons = ttk.Frame(main)
         buttons.pack(anchor="w", pady=14)
         self.buttons = []
@@ -366,7 +361,7 @@ class Window:
         self.output.configure(state="disabled")
 
     def start(self, action):
-        base, folder, hp = Path(self.base.get()), binaries_folder(), not self.skip_hp.get()
+        base, folder = Path(self.base.get()), binaries_folder()
         for b in self.buttons:
             b.configure(state="disabled")
         def work():
@@ -374,7 +369,7 @@ class Window:
             try:
                 with redirect_stdout(stream), redirect_stderr(stream):
                     try:
-                        action(base, folder, hp, self.log)
+                        action(base, folder, self.log)
                     finally:
                         stream.flush()
                 self.log("Done.")

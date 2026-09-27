@@ -30,7 +30,7 @@ class UpkWorkflowTests(unittest.TestCase):
 
     def test_install_and_restore_use_saved_script(self):
         with patch.object(app, "stage_upk", return_value=(b"patched", b"generated undo")):
-            app.install(self.root, self.root, True, lambda _: None)
+            app.install(self.root, self.root, lambda _: None)
         self.assertFalse(app.size_file(self.upk).exists())
         record = app.load_state(self.exe)["components"]["upk"]
         script = self.root / record["uninstall"]
@@ -40,7 +40,7 @@ class UpkWorkflowTests(unittest.TestCase):
         del state["components"]["exe"]
         app.save_state(self.exe, state)
         with patch.object(app, "stage_upk", return_value=(b"restored unpacked", None)) as stage:
-            app.restore(self.root, self.root, True, lambda _: None)
+            app.restore(self.root, self.root, lambda _: None)
             stage.assert_called_once_with(self.upk, self.root, script, uninstall=True)
         self.assertFalse(app.size_file(self.upk).exists())
         self.assertEqual(self.upk.read_bytes(), b"restored unpacked")
@@ -59,7 +59,7 @@ class UpkWorkflowTests(unittest.TestCase):
         with patch.object(app, "stage_upk", return_value=(b"patched", b"undo")), \
                 patch.object(app, "save_state", side_effect=fail_once):
             with self.assertRaises(OSError):
-                app.install(self.root, self.root, True, lambda _: None)
+                app.install(self.root, self.root, lambda _: None)
         self.assertEqual(self.upk.read_bytes(), b"original")
         self.assertEqual(app.size_file(self.upk).read_bytes(), b"size")
         self.assertEqual(list((self.root / "mods").glob("*.uninstall.txt")), [])
