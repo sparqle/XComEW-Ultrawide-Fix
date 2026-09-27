@@ -60,14 +60,14 @@ class XComInputBase
 native simulated function Vector2D ConvertUIPointToScreenCoordinate(Vector2D kPoint);
 ```
 
-Additionally, there is also mapping done in UnrealScript code, which is used to position 2D elements that are not part of 
-the normalized UI, such as unit health bars:
+There is also a native function that does the reverse, but it isn't actually used by the game. Instead this reverse mapping is done in UnrealScript code, and it is used to place UI elements such as health bars next to units:
 
 ```
 class UIFxsMovie
 
 simulated function Vector2D ConvertNormalizedUICoordsToScreenCoords(float X, float Y)
 ```
+*(The name of this function is actually quite confusing, it could have been named ConvertScreenCoordsToNormalizedUICoords)*
 
 The Scaleform/Flash UI applies a scale-to-fit on either width or height, depending on the aspect ratio.
 But the mapping function assumed it would always be scale-to-fit on width. But in the case of ultrawide resolutions, the UI uses scale-to-fit on height, leading to the discrepancy.
