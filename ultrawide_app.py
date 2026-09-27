@@ -252,8 +252,7 @@ class Window:
         main.pack(fill="both", expand=True)
         ttk.Label(main, text="XCOM: Enemy Within — Ultrawide Fix", font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(0, 14))
         self.row(main, "XCom-Enemy-Unknown Folder", self.base, self.choose_base)
-        ttk.Checkbutton(main, text="Skip installing/restoring HP bar patch (XComGame.upk), I will patch it myself.", variable=self.skip_hp).pack(anchor="w", pady=12)
-        ttk.Label(main, text="Place DecompressLZO.exe and PatchUPK.exe in the binaries folder beside this app for HP bars. An EXE backup is kept for restore; the UPK uses its uninstall patch.", wraplength=710).pack(anchor="w")
+        ttk.Checkbutton(main, text="Skip installing/restoring HP bar patch (XComGame.upk), I will patch it myself using PatcherGUI or PatchUPK.", variable=self.skip_hp).pack(anchor="w", pady=12)
         buttons = ttk.Frame(main)
         buttons.pack(anchor="w", pady=14)
         self.buttons = []
