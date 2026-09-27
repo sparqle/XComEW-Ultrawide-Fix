@@ -14,7 +14,7 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-import xcomew_complete_ultrawide_patcher as exe_patch
+import exe_patcher as exe_patch
 
 APP = "XCOM EW Ultrawide Fix"
 STATE = ".ultrawide-fix.json"
@@ -84,8 +84,13 @@ def tool(name: str, folder: Path) -> Path:
 
 
 def binaries_folder() -> Path:
-    app_dir = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+    app_dir = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
     return app_dir / "binaries"
+
+
+def patch_script(uninstall: bool = False) -> Path:
+    root = Path(sys._MEIPASS) if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+    return root / "patches" / (UNINSTALL if uninstall else SCRIPT)
 
 
 def run_tool(args: list[str], cwd: Path) -> None:
@@ -98,7 +103,7 @@ def run_tool(args: list[str], cwd: Path) -> None:
 def stage_upk(upk: Path, folder: Path, uninstall: bool = False) -> bytes:
     decompress = tool("DecompressLZO", folder)
     patch = tool("PatchUPK", folder)
-    script = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) / (UNINSTALL if uninstall else SCRIPT)
+    script = patch_script(uninstall)
     with tempfile.TemporaryDirectory(prefix="xcomew-ultrawide-") as temp:
         work = Path(temp)
         # DecompressLZO writes the output path; PatchUPK finds XComGame.upk in the directory.

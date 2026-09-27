@@ -1,8 +1,12 @@
 # XCOM: Enemy Within ultrawide fix
 
-Run `build-windows.bat` on Windows with Python 3 installed. It produces `dist\XComEW-Ultrawide-Fix.exe`, a standalone Windows UI with the EXE patch and HP bar patch script embedded. Python is only required to build it.
+Build on Windows with Python 3.10 or newer. One-time setup in your selected Python environment: `python -m pip install -r requirements-build.txt` (or `uv pip install --python .venv/Scripts/python.exe -r requirements-build.txt` for a uv-managed environment).
 
-For the HP bar patch, supply Windows `DecompressLZO.exe` and `PatchUPK.exe` from [UPKUtils](https://github.com/wghost/UPKUtils). Put both in a `binaries` folder beside `XComEW-Ultrawide-Fix.exe` (for a source run, beside `ultrawide_app.py`). These executables are **not included**. PatcherGUI.exe is unnecessary. If you check the skip HP bar option, neither tool is needed and only `XComEW.exe` is modified or restored.
+In PyCharm, select the project's Python interpreter, then run the shared **Build executable** configuration, or right-click `build.py` and choose **Run**. From the command line, run `python build.py` with that same environment activated, or use `build-windows.bat` (active environment first, then the project's `.venv`, then `py -3`). PyCharm's ordinary Build Project action does not package Python applications; this run configuration performs that step.
+
+Both routes produce `dist\XComEW-Ultrawide-Fix.exe`, a single-file Windows GUI with the EXE patcher and both HP bar patch scripts embedded. Python is only required to build it. Build paths are resolved relative to `build.py`, so the working directory does not matter. To run the GUI from source, run `src/app.py`.
+
+For the HP bar patch, supply Windows `DecompressLZO.exe` and `PatchUPK.exe` from [UPKUtils](https://github.com/wghost/UPKUtils). Put both in a `binaries` folder beside `XComEW-Ultrawide-Fix.exe` (for a source run, in the project root). These executables are **not included**. PatcherGUI.exe is unnecessary. If you check the skip HP bar option, neither tool is needed and only `XComEW.exe` is modified or restored.
 
 Select the `XCom-Enemy-Unknown` directory, leave the skip HP bar option unchecked to install or restore both, and click Install or Restore. The app derives `XEW\Binaries\Win32\XComEW.exe` and `XEW\XComGame\CookedPCConsole\XComGame.upk`. It stages UPK operations outside the game directory; if DecompressLZO reports the UPK is already decompressed, it stages a copy. It records hashes in `XEW\Binaries\Win32\.ultrawide-fix.json` and keeps an EXE backup beside the executable. No permanent UPK backup is created. Keep the EXE backup and state file until restored. Close the game first.
 
