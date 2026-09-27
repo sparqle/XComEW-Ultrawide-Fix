@@ -158,6 +158,7 @@ def stage_upk(upk: Path, folder: Path, script: Path, *, uninstall: bool = False)
 
 
 def install(base: Path, folder: Path, log) -> None:
+    log('--- Installing... ---')
     exe, upk = locations(base)
     state = load_state(exe)
     targets = [("exe", exe), ("upk", upk)]
@@ -251,6 +252,7 @@ def latest_backup() -> Path:
 
 
 def force_restore(base: Path, folder: Path, log, *, backup: Path | None = None) -> None:
+    log('--- Force restoring... ---')
     exe, upk = locations(base)
     source = backup if backup is not None else latest_backup()
     original = backup_file(str(source / "XComEW.exe"))
@@ -289,6 +291,7 @@ def force_restore(base: Path, folder: Path, log, *, backup: Path | None = None) 
 
 
 def restore(base: Path, folder: Path, log) -> None:
+    log('--- Restoring... ---')
     exe, upk = locations(base)
     state = load_state(exe)
     selected = [("exe", exe), ("upk", upk)]
@@ -354,6 +357,7 @@ def check_result(result: int) -> None:
 
 
 def status(base: Path, folder: Path, log) -> None:
+    log('--- Status ---')
     exe, upk = locations(base)
     check_result(exe_patch.status(exe, show_hash=True))
     record = load_state(exe)["components"].get("upk")
