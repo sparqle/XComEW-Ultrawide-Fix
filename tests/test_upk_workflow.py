@@ -99,6 +99,8 @@ class UpkWorkflowTests(unittest.TestCase):
             app.restore(self.root, self.root, lambda _: None)
         self.assertEqual(self.exe.read_bytes(), b"exe")
         self.assertEqual(self.upk.read_bytes(), b"original")
+        self.assertEqual(backup.read_bytes(), b"exe")
+        self.assertEqual(script.read_bytes(), b"undo")
 
     def test_legacy_mods_uninstall_is_rejected(self):
         script = self.root / "mods" / "legacy.uninstall.txt"

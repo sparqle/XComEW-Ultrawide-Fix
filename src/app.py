@@ -359,9 +359,6 @@ def restore(base: Path, folder: Path, log) -> None:
     for key, path in done:
         del state["components"][key]
         save_state(exe, state)
-        rec = next(r for k, p, r in ready if k == key)
-        if "backup" in rec:
-            backup_file(rec["backup"]).unlink()
         log(f"Restored {path.name}")
 
 
