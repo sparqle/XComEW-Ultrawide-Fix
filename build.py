@@ -72,11 +72,15 @@ def main() -> int:
     shutil.copy2(ROOT / "README.md", ROOT / "dist" / "README.md")
     dist = ROOT / "dist"
     archive = dist / f"{NAME}-{VERSION}.zip"
-    # Exclude ZIPs, including this output and archives from earlier builds.
+    # Exclude ZIPs and installation-specific uninstall scripts left in mods.
     with ZipFile(archive, "w", compression=ZIP_DEFLATED) as bundle:
         for path in sorted(dist.rglob("*")):
-            if path.is_file() and path.suffix.lower() != ".zip":
-                bundle.write(path, path.relative_to(dist))
+            if not path.is_file() or path.suffix.lower() == ".zip":
+                continue
+            relative = path.relative_to(dist)
+            if relative.parts[0].lower() == "mods" and path.name.lower().endswith(".uninstall.txt"):
+                continue
+            bundle.write(path, relative)
     print(f"Built {ROOT / 'dist' / (NAME + '.exe')} (version {VERSION})")
     print(f"Created {archive}")
     return 0
