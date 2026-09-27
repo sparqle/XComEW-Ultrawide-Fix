@@ -29,13 +29,13 @@ If you want to restore the original game files after an installation. Or you can
 to their original state.
 
 1. Close the game.
-2. Run `XComEW-Ultrawide-Fix.exe` and choose your **`XCom-Enemy-Unknown`** folder you previously installed in.
+2. Run `XComEW-Ultrawide-Fix.exe` and choose your `XCom-Enemy-Unknown` folder you previously installed in.
 3. Click **Restore** to restore.
 
-This will restore the original `XComEW.exe` that was backed up in the `backups` directory, checking whether the binary was changed in the mean time. It will also use an uninstall patch to restore the health
+This will restore the original `XComEW.exe` that was backed up in the `backups` directory, checking whether the binary was changed in the meantime. It will also use an uninstall patch to restore the health
 bar modification in `XComGame.upk`. 
 
-You can also **force a restore**, which will use the last backup and ignore any checks on whether the binary was changed in the mean time.
+You can also **force a restore**, which will use the last backup and ignore any checks on whether the binary was changed in the meantime.
 
 ## Tested configurations
 
@@ -106,7 +106,7 @@ This function was patched from the linear algorithm:
   ```
   halfFOV *= (width / height) * 0.5625
   ```
-  To a logarithmic FOV calculation:
+  To a trigonometric FOV calculation:
   ```
   halfFOV = atan(tan(halfFOV) * ((width / height) * 0.5625))
   ```
@@ -129,7 +129,7 @@ Many thanks to the following utilities that made this fix possible:
 * [UPK Utils](https://github.com/wghost/UPKUtils): A great collection of tools for inspecting and modifying UPK files.
 * [GUI Patcher](https://github.com/wghost/GUIPatcher): The GUI interface to apply UPK patches for XCOM, which inspired
   this tool's interface.
-* [UE Explorer](https://github.com/UE-Explorer/UE-Explorer): For providing a way to show and search Unreal Script code
+* [UE Explorer](https://github.com/UE-Explorer/UE-Explorer): For providing a way to show and search UnrealScript code
   inside UPK files.
 * [Ghidra](https://github.com/nationalsecurityagency/ghidra): To decompile XCOM.exe assembly with, to find native
   functions mentioned in UPK files.
