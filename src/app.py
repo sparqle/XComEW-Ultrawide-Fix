@@ -9,7 +9,6 @@ import subprocess
 import sys
 import tempfile
 import threading
-import uuid
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 import tkinter as tk
@@ -21,7 +20,6 @@ from version import VERSION
 
 APP = "XCOM EW Ultrawide Fix"
 STATE = ".ultrawide-fix.json"
-EXE_BACKUP = ".ultrawide-fix.original"
 SCRIPT = "Fix-ultrawide-Tactical.txt"
 
 
@@ -58,8 +56,13 @@ def locations(base: Path) -> tuple[Path, Path]:
     return exe, matches[0]
 
 
+def backup_directory(exe: Path) -> Path:
+    installation = hashlib.sha256(str(exe.resolve()).casefold().encode("utf-8")).hexdigest()[:16]
+    return app_folder() / "backups" / installation
+
+
 def load_state(exe: Path) -> dict:
-    path = exe.parent / STATE
+    path = backup_directory(exe) / STATE
     if not path.exists():
         return {"version": 2, "components": {}}
     obj = json.loads(path.read_text(encoding="utf-8"))
@@ -69,8 +72,9 @@ def load_state(exe: Path) -> dict:
 
 
 def save_state(exe: Path, state: dict) -> None:
-    path = exe.parent / STATE
+    path = backup_directory(exe) / STATE
     if state["components"]:
+        path.parent.mkdir(parents=True, exist_ok=True)
         write_atomic(path, (json.dumps(state, indent=2) + "\n").encode())
     elif path.exists():
         path.unlink()
@@ -93,6 +97,13 @@ def binaries_folder() -> Path:
 
 def patch_script() -> Path:
     return app_folder() / "mods" / SCRIPT
+
+
+def backup_file(recorded: str) -> Path:
+    path = (app_folder() / recorded).resolve()
+    if not path.is_relative_to((app_folder() / "backups").resolve()):
+        raise ValueError("Recorded backup must be in the application's backups directory.")
+    return path
 
 
 def size_file(upk: Path) -> Path:
@@ -173,13 +184,15 @@ def install(base: Path, folder: Path, log) -> None:
         pending = [(key, path) for key, path in pending if key != "exe"]
     originals = {key: target.read_bytes() for key, target in pending}
     written = []
-    exe_backup = exe.with_name(exe.name + EXE_BACKUP)
+    backup_dir = backup_directory(exe)
+    exe_backup = backup_dir / exe.name
     backup_created = False
     sidecar_data = size_file(upk).read_bytes() if "upk" in originals and size_file(upk).exists() else None
     uninstall_path = None
     try:
+        backup_dir.mkdir(parents=True, exist_ok=True)
         if uninstall_data is not None:
-            uninstall_path = app_folder() / "mods" / f"{SCRIPT}.{uuid.uuid4().hex}.uninstall.txt"
+            uninstall_path = backup_dir / Path(SCRIPT).with_suffix(".uninstall.txt").name
             write_atomic(uninstall_path, uninstall_data)
         if "exe" in originals:
             if exe_backup.exists():
@@ -199,7 +212,7 @@ def install(base: Path, folder: Path, log) -> None:
             state["components"][key] = {"path": str(target),
                                          "original_sha256": original_hash, "patched_sha256": patched_hash}
             if key == "exe":
-                state["components"][key]["backup"] = str(exe_backup)
+                state["components"][key]["backup"] = exe_backup.relative_to(app_folder()).as_posix()
             else:
                 state["components"][key]["uninstall"] = uninstall_path.relative_to(app_folder()).as_posix()
                 state["components"][key]["uninstall_sha256"] = digest(uninstall_path)
@@ -221,6 +234,7 @@ def install(base: Path, folder: Path, log) -> None:
 
 def restore(base: Path, folder: Path, log) -> None:
     exe, upk = locations(base)
+    exe, upk = locations(base)
     state = load_state(exe)
     selected = [("exe", exe), ("upk", upk)]
     ready = []
@@ -240,16 +254,14 @@ def restore(base: Path, folder: Path, log) -> None:
         if key == "exe":
             if not rec.get("backup"):
                 raise ValueError("No original EXE backup recorded; cannot restore XComEW.exe.")
-            backup = Path(rec["backup"])
+            backup = backup_file(rec["backup"])
             if not backup.is_file() or digest(backup) != rec["original_sha256"]:
                 raise ValueError(f"Original backup missing or changed: {backup}")
             payloads[key] = backup.read_bytes()
         else:
             if not rec.get("uninstall") or not rec.get("uninstall_sha256"):
                 raise ValueError("No generated uninstall script recorded for this UPK installation; restore it with the original patching tool or backup.")
-            script = (app_folder() / rec["uninstall"]).resolve()
-            if not script.is_relative_to((app_folder() / "mods").resolve()):
-                raise ValueError("Recorded uninstall script must be in the application's mods directory.")
+            script = backup_file(rec["uninstall"])
             if not script.is_file() or digest(script) != rec["uninstall_sha256"]:
                 raise ValueError(f"Uninstall script missing or changed: {script}")
             payloads[key], _ = stage_upk(path, folder, script, uninstall=True)
@@ -260,7 +272,7 @@ def restore(base: Path, folder: Path, log) -> None:
         for key, path, rec in ready:
             done.append((key, path))
             if key == "exe":
-                check_result(exe_patch.restore(path, rec["backup"], dry_run=False))
+                check_result(exe_patch.restore(path, backup_file(rec["backup"]), dry_run=False))
             else:
                 write_atomic(path, payloads[key])
                 size_file(path).unlink(missing_ok=True)
@@ -277,7 +289,7 @@ def restore(base: Path, folder: Path, log) -> None:
         save_state(exe, state)
         rec = next(r for k, p, r in ready if k == key)
         if "backup" in rec:
-            Path(rec["backup"]).unlink()
+            backup_file(rec["backup"]).unlink()
         log(f"Restored {path.name}")
 
 

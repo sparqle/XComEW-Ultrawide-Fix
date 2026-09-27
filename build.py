@@ -72,13 +72,17 @@ def main() -> int:
         print(f"Copied binaries to {destination}")
     shutil.copy2(ROOT / "README.md", ROOT / "dist" / "README.md")
     dist = ROOT / "dist"
+    (dist / "backups").mkdir(exist_ok=True)
     archive = dist / f"{NAME}-{VERSION}.zip"
     # Exclude ZIPs and installation-specific uninstall scripts left in mods.
     with ZipFile(archive, "w", compression=ZIP_DEFLATED) as bundle:
+        bundle.writestr("backups/", b"")
         for path in sorted(dist.rglob("*")):
             if not path.is_file() or path.suffix.lower() == ".zip":
                 continue
             relative = path.relative_to(dist)
+            if relative.parts[0].lower() == "backups":
+                continue
             if relative.as_posix().lower() == CONFIG.lower():
                 continue
             if relative.parts[0].lower() == "mods" and path.name.lower().endswith(".uninstall.txt"):

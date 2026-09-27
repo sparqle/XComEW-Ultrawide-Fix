@@ -22,11 +22,11 @@ class UpkWorkflowTests(unittest.TestCase):
         app.size_file(self.upk).write_bytes(b"size")
         (self.root / "mods").mkdir()
         (self.root / "mods" / app.SCRIPT).write_bytes(b"install")
-        app.save_state(self.exe, {"version": 2, "components": {
-            "exe": {"path": str(self.exe), "patched_sha256": app.digest(self.exe)}}})
         mock = patch.object(app, "app_folder", return_value=self.root)
         mock.start()
         self.addCleanup(mock.stop)
+        app.save_state(self.exe, {"version": 2, "components": {
+            "exe": {"path": str(self.exe), "patched_sha256": app.digest(self.exe)}}})
 
     def test_install_and_restore_use_saved_script(self):
         with patch.object(app, "stage_upk", return_value=(b"patched", b"generated undo")):
@@ -34,6 +34,7 @@ class UpkWorkflowTests(unittest.TestCase):
         self.assertFalse(app.size_file(self.upk).exists())
         record = app.load_state(self.exe)["components"]["upk"]
         script = self.root / record["uninstall"]
+        self.assertTrue(script.is_relative_to(self.root / "backups"))
         self.assertEqual(script.read_bytes(), b"generated undo")
         # Restore only UPK; the EXE is an externally managed fixture.
         state = app.load_state(self.exe)
@@ -63,6 +64,57 @@ class UpkWorkflowTests(unittest.TestCase):
         self.assertEqual(self.upk.read_bytes(), b"original")
         self.assertEqual(app.size_file(self.upk).read_bytes(), b"size")
         self.assertEqual(list((self.root / "mods").glob("*.uninstall.txt")), [])
+        self.assertEqual(list((self.root / "backups").rglob("*.uninstall.txt")), [])
+
+    def test_exe_and_uninstall_share_local_backup_directory(self):
+        app.save_state(self.exe, {"version": 2, "components": {}})
+
+        def install_exe(path, *, dry_run, show_hash, backup_path=None):
+            if not dry_run:
+                backup_path.write_bytes(path.read_bytes())
+                path.write_bytes(b"patched exe")
+            return 0
+
+        def restore_exe(path, backup, *, dry_run):
+            path.write_bytes(Path(backup).read_bytes())
+            return 0
+
+        with patch.object(app.exe_patch, "install", side_effect=install_exe), \
+                patch.object(app.exe_patch, "inspect"), \
+                patch.object(app.exe_patch, "is_fully_patched", return_value=False), \
+                patch.object(app, "stage_upk", return_value=(b"patched", b"undo")):
+            app.install(self.root, self.root, lambda _: None)
+        state = app.load_state(self.exe)
+        backup = self.root / state["components"]["exe"]["backup"]
+        script = self.root / state["components"]["upk"]["uninstall"]
+        self.assertEqual(backup.parent, script.parent)
+        self.assertEqual(script.name, "Fix-ultrawide-Tactical.uninstall.txt")
+        self.assertTrue((backup.parent / app.STATE).is_file())
+        self.assertFalse((self.exe.parent / app.STATE).exists())
+        self.assertTrue(backup.is_relative_to(self.root / "backups"))
+        self.assertEqual(backup.read_bytes(), b"exe")
+        with patch.object(app.exe_patch, "restore", side_effect=restore_exe), \
+                patch.object(app, "stage_upk", return_value=(b"original", None)):
+            app.restore(self.root, self.root, lambda _: None)
+        self.assertEqual(self.exe.read_bytes(), b"exe")
+        self.assertEqual(self.upk.read_bytes(), b"original")
+
+    def test_legacy_mods_uninstall_is_rejected(self):
+        script = self.root / "mods" / "legacy.uninstall.txt"
+        script.write_bytes(b"undo")
+        app.save_state(self.exe, {"version": 2, "components": {"upk": {
+            "path": str(self.upk), "patched_sha256": app.digest(self.upk),
+            "uninstall": "mods/legacy.uninstall.txt", "uninstall_sha256": app.digest(script)}}})
+        with patch.object(app, "stage_upk", return_value=(b"restored", None)) as stage:
+            with self.assertRaisesRegex(ValueError, "backups directory"):
+                app.restore(self.root, self.root, lambda _: None)
+            stage.assert_not_called()
+
+    def test_backup_paths_outside_local_directory_are_rejected(self):
+        for recorded in (str(self.exe), "mods/undo.txt", "backups/../undo.txt"):
+            with self.subTest(recorded=recorded):
+                with self.assertRaisesRegex(ValueError, "backups directory"):
+                    app.backup_file(recorded)
 
     def test_stage_captures_generated_uninstall(self):
         def fake_tool(args, cwd):
