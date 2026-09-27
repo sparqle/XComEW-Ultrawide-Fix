@@ -21,7 +21,7 @@ from version import VERSION
 APP = "XCOM EW Ultrawide Fix"
 STATE = ".ultrawide-fix.json"
 EXE_BACKUP = ".ultrawide-fix.original"
-SCRIPT = "Fix-ultrawide-HPBars.txt"
+SCRIPT = "Fix-ultrawide-Tactical.txt"
 
 
 def digest(path: Path) -> str:

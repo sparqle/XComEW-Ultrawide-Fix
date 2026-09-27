@@ -63,7 +63,7 @@ def main() -> int:
     ])
     mods = ROOT / "dist" / "mods"
     mods.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(ROOT / "mods" / "Fix-ultrawide-HPBars.txt", mods)
+    shutil.copy2(ROOT / "mods" / "Fix-ultrawide-Tactical.txt", mods)
     binaries = ROOT / "binaries"
     if binaries.is_dir():
         destination = ROOT / "dist" / "binaries"

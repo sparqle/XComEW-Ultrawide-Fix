@@ -1,0 +1,226 @@
+// XCOM: Enemy Within ultrawide tactical UI fixes
+//
+// - Fix UI to screenspace mapping on ultrawide resolutions (Healthbars)
+// - Fix Outline FOV adjustment on ultrawide resolutions (Unit outlines)
+
+UPK_FILE = XComGame.upk
+
+// ------------------------------------------------------------
+// Add Core.Object.Atan2 dependency
+// ------------------------------------------------------------
+
+[ADD_NAME_ENTRY]
+<%u6>
+<%t"Atan2">
+<%u0x00000000>
+<%u0x00070010>
+
+[ADD_IMPORT_ENTRY]
+<Core>
+<Function>
+<Core.Object>
+<Atan2>
+
+// ------------------------------------------------------------
+// Replace UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords
+//
+// Converts normalized screen coordinates into the game's 1280x720 UI space.
+//
+// Original game logic scales from screen WIDTH, which causes incorrect mapping
+// on ultrawide resolutions. This patch instead scales from screen HEIGHT:
+//
+//     ScaleFactor = UIMGR_RES_Y / ScreenHeight
+//
+// This preserves the 1280x720 UI aspect ratio and horizontally centers the UI
+// canvas on wider screens, matching the native ConvertUIPointToScreenCoordinate
+// ultrawide fix.
+//
+// Intended result:
+//   - correct mouse/UI positioning on ultrawide
+//   - no horizontal stretching of the virtual UI coordinate space
+//   - 16:9 behavior remains unchanged
+// ------------------------------------------------------------
+
+OBJECT = UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords : AUTO
+
+[REPLACEMENT_CODE]
+/*(0x0000/0x0000)*/ 0F 00 <.v2ScreenRes> 1B <GetScreenResolution> 16
+/*(0x0014/0x0010)*/ 0F 00 <.X> 38 3F FB 38 44 AB 00 <.X> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 25 38 44 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
+/*(0x006A/0x0046)*/ 0F 00 <.Y> 38 3F FB 38 44 AB 00 <.Y> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 25 38 44 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
+/*(0x00C0/0x007C)*/ 0F 00 <.ScaleFactor> AC 38 3F 01 <@UIMGR_RES_Y> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
+/*(0x00F3/0x009B)*/ 0F 00 <.inverseScaleFactor> AC 1E <%f 1> 00 <.ScaleFactor> 16
+/*(0x010D/0x00AD)*/ 0F 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> AF 00 <.X> AB AF 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> AB 38 3F 01 <@UIMGR_RES_X> 00 <.inverseScaleFactor> 16 16 1E <%f 0.5> 16 16
+/*(0x0170/0x00EC)*/ 0F 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> AF 00 <.Y> AB AF 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> AB 38 3F 01 <@UIMGR_RES_Y> 00 <.inverseScaleFactor> 16 16 1E <%f 0.5> 16 16
+/*(0x01D3/0x012B)*/ B6 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> 00 <.ScaleFactor> 16
+/*(0x01FA/0x0142)*/ B6 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> 00 <.ScaleFactor> 16
+/*(0x0221/0x0159)*/ 04 00 <.v2ScreenSpacePos>
+/*(0x022B/0x015F)*/ 04 3A <.ReturnValue>
+/*(0x0235/0x0165)*/ 53
+
+// ------------------------------------------------------------
+// Replace XComVis.Tick
+//
+// Update the outline FOV adjustment to be logarithmic
+//
+// Formula:
+// AdjustedFOV = Atan2(
+//     Tan(CameraFOV * 0.00872665) *
+//     ((m_vTargetSize.X / m_vTargetSize.Y) * 0.5625),
+//     1.0
+// ) * 114.59156;
+//
+// 0.00872665 = PI / 360
+// 0.5625     = 1 / (16/9)
+// 114.59156  = 360 / PI
+//
+// IMPORTANT:
+// This replaces the complete XComVis.Tick script so all branch labels are
+// recalculated by PatchUPK. This avoids the invalid jump offsets caused by
+// resizing only the middle of the function.
+// ------------------------------------------------------------
+
+OBJECT = XComVis.Tick : AUTO
+
+[REPLACEMENT_CODE]
+
+14 2D 00 <.bCurrentlyRenderingDownsampledDepth> 28
+14 2D 00 <.bMapRequiresDownsampledOutlineDepth> 28
+0F 00 <.WI> 12 20 <Engine.WorldInfo> [@] <Engine.WorldInfo.GetWorldInfo.ReturnValue> 00 ( 1C <Engine.WorldInfo.GetWorldInfo> 16 )
+
+07 [@label_0x007A] 77 00 <.WI> 2A 16
+    14 2D 00 <.bMapRequiresDownsampledOutlineDepth> 19 00 <.WI> [@] <Engine.WorldInfo.UseDownsampledOutlineDepth> 00 ( 2D 01 <Engine.WorldInfo.UseDownsampledOutlineDepth> )
+
+[#label_0x007A]
+1C <Engine.Actor.Tick> 00 <.DeltaTime> 16
+
+07 [@label_0x0902] 82 82 77 01 <@m_kCamera> 2A 16 18 [@] ( 77 01 <@m_kRT> 2A 16 16 ) 18 [@] ( 77 01 <@m_kEdgeEffect> 2A 16 16 )
+
+    14 2D 00 <.bResolutionChanged> 1B <DetectResolutionChange> 16
+
+    07 [@label_0x00EA] 2D 00 <.bResolutionChanged>
+        1B <InitResources> 16
+
+    [#label_0x00EA]
+    14 2D 00 <.bCurrentlyRenderingDownsampledDepth> 9A 19 01 <@m_kEdgeEffect> [@] <Engine.XComEdgeEffect.m_nDownsampleFactor> 00 ( 01 <Engine.XComEdgeEffect.m_nDownsampleFactor> ) 2C 02 16
+
+    07 [@label_0x016C] 77 19 01 <@m_kCamera> [@] <XComCamera.m_kCurrentView> 00 ( 01 <XComCamera.m_kCurrentView> ) 2A 16
+        0F 00 <.kCameraView> 2E <Class.XGCameraView_AimingThirdPerson> 19 01 <@m_kCamera> [@] <XComCamera.m_kCurrentView> 00 ( 01 <XComCamera.m_kCurrentView> )
+
+    [#label_0x016C]
+    07 [@label_0x01C7] 77 00 <.kCameraView> 2A 16
+        0F 19 01 <@m_kEdgeEffect> [@] <Engine.XComEdgeEffect.m_kOutlineColor> 00 ( 01 <Engine.XComEdgeEffect.m_kOutlineColor> ) 01 <@m_3POutlineColor>
+        14 19 01 <@m_kEdgeEffect> [@] <Engine.XComEdgeEffect.m_bTargeting> 00 ( 2D 01 <Engine.XComEdgeEffect.m_bTargeting> ) 27
+        06 [@label_0x0210]
+
+    [#label_0x01C7]
+    0F 19 01 <@m_kEdgeEffect> [@] <Engine.XComEdgeEffect.m_kOutlineColor> 00 ( 01 <Engine.XComEdgeEffect.m_kOutlineColor> ) 01 <@m_BuildingOutlineColor>
+    14 19 01 <@m_kEdgeEffect> [@] <Engine.XComEdgeEffect.m_bTargeting> 00 ( 2D 01 <Engine.XComEdgeEffect.m_bTargeting> ) 28
+
+    [#label_0x0210]
+    07 [@label_0x0252] 82 81 19 01 <@m_kEdgeEffect> [@] <Engine.XComEdgeEffect.m_bTargeting> 00 ( 2D 01 <Engine.XComEdgeEffect.m_bTargeting> ) 16 18 [@] ( 2D 00 <.bMapRequiresDownsampledOutlineDepth> 16 )
+        14 2D 00 <.bShouldRenderDownsampledDepth> 27
+        06 [@label_0x025E]
+
+    [#label_0x0252]
+    14 2D 00 <.bShouldRenderDownsampledDepth> 28
+
+    [#label_0x025E]
+    07 [@label_0x0825] 84 84 B5 01 <@m_fPrevFOV> 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 00 35 <Engine.Camera.TCameraCache.POV> <Engine.Camera.TCameraCache> 00 00 19 01 <@m_kCamera> [@] <Engine.Camera.CameraCache> 00 ( 01 <Engine.Camera.CameraCache> ) 16 18 [@] ( 2D 00 <.bResolutionChanged> 16 ) 18 [@] ( F3 2D 00 <.bShouldRenderDownsampledDepth> 2D 00 <.bCurrentlyRenderingDownsampledDepth> 16 16 )
+
+        0F 01 <@m_nDownsampleFactor> 45 2D 00 <.bShouldRenderDownsampledDepth> [@] ( 2C 02 ) [@] ( 26 )
+
+        0F 19 01 <@m_kEdgeEffect> [@] <Engine.XComEdgeEffect.m_nDownsampleFactor> 00 ( 01 <Engine.XComEdgeEffect.m_nDownsampleFactor> ) 01 <@m_nDownsampleFactor>
+
+        0F 00 <.AdjustedFOV> 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 00 35 <Engine.Camera.TCameraCache.POV> <Engine.Camera.TCameraCache> 00 00 19 01 <@m_kCamera> [@] <Engine.Camera.CameraCache> 00 ( 01 <Engine.Camera.CameraCache> )
+
+        07 [@label_0x045A] 82 81 19 01 <Engine.Actor.WorldInfo> [@] <Engine.WorldInfo.IsConsoleBuild.ReturnValue> 00 ( 1C <Engine.WorldInfo.IsConsoleBuild> 4A 16 ) 16 18 [@] ( 7B 19 01 <Engine.Actor.WorldInfo> [@] <Engine.WorldInfo.GetMapName.ReturnValue> 00 ( 1C <Engine.WorldInfo.GetMapName> 4A 16 ) 1F <%t "Command1"> 16 16 )
+
+            // AdjustedFOV =
+            //     Atan2(
+            //         Tan(CameraFOV * PI/360) *
+            //         ((TargetWidth / TargetHeight) * 0.5625),
+            //         1.0
+            //     ) * 360/PI;
+
+            0F
+                00 <.AdjustedFOV>
+
+                AB
+
+                    1C <Core.Object.Atan2>
+
+                        AB
+
+                            BD
+                                AB
+                                    35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 00
+                                        35 <Engine.Camera.TCameraCache.POV> <Engine.Camera.TCameraCache> 00 00
+                                            19 01 <@m_kCamera>
+                                            [@] <Engine.Camera.CameraCache>
+                                            00 ( 01 <Engine.Camera.CameraCache> )
+                                    1E <%f 0.00872665>
+                                16
+                            16
+
+                            AB
+
+                                AC
+                                    35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00
+                                        01 <@m_vTargetSize>
+
+                                    35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00
+                                        01 <@m_vTargetSize>
+                                16
+
+                                1E <%f 0.5625>
+
+                            16
+
+                        16
+
+                        1E <%f 1>
+
+                    16
+
+                    1E <%f 114.59156>
+
+                16
+
+        [#label_0x045A]
+        07 [@label_0x05E5] 19 01 <@m_kCamera> [@] <Engine.Camera.bConstrainAspectRatio> 00 ( 2D 01 <Engine.Camera.bConstrainAspectRatio> )
+
+            19 01 <@m_kCapturePrimary> [@] <NullRef> 00 ( 1C <Engine.SceneCapture2DComponent.SetCaptureParameters> 01 <@m_kRT> 00 <.AdjustedFOV> 1E <%f 1> 1E <%f 10000> 4A 4A 25 25 38 44 AC 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 01 <@m_vTargetSize> 38 3F 01 <@m_nDownsampleFactor> 16 38 44 AC 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 01 <@m_vTargetSize> 38 3F 01 <@m_nDownsampleFactor> 16 19 01 <@m_kCamera> [@] <Engine.Camera.ConstrainedAspectRatio> 00 ( 01 <Engine.Camera.ConstrainedAspectRatio> ) 16 )
+
+            19 01 <@m_kCaptureSecondary> [@] <NullRef> 00 ( 1C <Engine.SceneCapture2DComponent.SetCaptureParameters> 01 <@m_kRT> 00 <.AdjustedFOV> 1E <%f 1> 1E <%f 10000> 4A 4A 25 25 38 44 AC 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 01 <@m_vTargetSize> 38 3F 01 <@m_nDownsampleFactor> 16 38 44 AC 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 01 <@m_vTargetSize> 38 3F 01 <@m_nDownsampleFactor> 16 19 01 <@m_kCamera> [@] <Engine.Camera.ConstrainedAspectRatio> 00 ( 01 <Engine.Camera.ConstrainedAspectRatio> ) 16 )
+
+            06 [@label_0x0711]
+
+        [#label_0x05E5]
+        19 01 <@m_kCapturePrimary> [@] <NullRef> 00 ( 1C <Engine.SceneCapture2DComponent.SetCaptureParameters> 01 <@m_kRT> 00 <.AdjustedFOV> 1E <%f 1> 1E <%f 10000> 4A 4A 25 25 38 44 AC 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 01 <@m_vTargetSize> 38 3F 01 <@m_nDownsampleFactor> 16 38 44 AC 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 01 <@m_vTargetSize> 38 3F 01 <@m_nDownsampleFactor> 16 4A 16 )
+
+        19 01 <@m_kCaptureSecondary> [@] <NullRef> 00 ( 1C <Engine.SceneCapture2DComponent.SetCaptureParameters> 01 <@m_kRT> 00 <.AdjustedFOV> 1E <%f 1> 1E <%f 10000> 4A 4A 25 25 38 44 AC 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 01 <@m_vTargetSize> 38 3F 01 <@m_nDownsampleFactor> 16 38 44 AC 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 01 <@m_vTargetSize> 38 3F 01 <@m_nDownsampleFactor> 16 4A 16 )
+
+        [#label_0x0711]
+        0F 01 <@m_fPrevFOV> 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 00 35 <Engine.Camera.TCameraCache.POV> <Engine.Camera.TCameraCache> 00 00 19 01 <@m_kCamera> [@] <Engine.Camera.CameraCache> 00 ( 01 <Engine.Camera.CameraCache> )
+
+        07 [@label_0x0825] 77 01 <@m_kEdgeEffect> 2A 16
+            0F 19 01 <@m_kEdgeEffect> [@] <Engine.XComEdgeEffect.m_kMaxSceneDepth> 00 ( 01 <Engine.XComEdgeEffect.m_kMaxSceneDepth> ) AC AB 35 <Core.Object.Vector.Z> <Core.Object.Plane> 00 00 35 <Core.Object.Matrix.ZPlane> <Core.Object.Matrix> 00 00 19 01 <@m_kCapturePrimary> [@] <Engine.SceneCapture2DComponent.ProjMatrix> 00 ( 01 <Engine.SceneCapture2DComponent.ProjMatrix> ) 1E <%f -1> 16 AF 1E <%f 1> 35 <Core.Object.Vector.Z> <Core.Object.Plane> 00 00 35 <Core.Object.Matrix.ZPlane> <Core.Object.Matrix> 00 00 19 01 <@m_kCapturePrimary> [@] <Engine.SceneCapture2DComponent.ProjMatrix> 00 ( 01 <Engine.SceneCapture2DComponent.ProjMatrix> ) 16 16
+
+    [#label_0x0825]
+    61 0B 35 <Core.Object.TPOV.Location> <Core.Object.TPOV> 00 00 35 <Engine.Camera.TCameraCache.POV> <Engine.Camera.TCameraCache> 00 00 19 01 <@m_kCamera> [@] <Engine.Camera.CameraCache> 00 ( 01 <Engine.Camera.CameraCache> ) 16
+
+    61 2B 35 <Core.Object.TPOV.Rotation> <Core.Object.TPOV> 00 00 35 <Engine.Camera.TCameraCache.POV> <Engine.Camera.TCameraCache> 00 00 19 01 <@m_kCamera> [@] <Engine.Camera.CameraCache> 00 ( 01 <Engine.Camera.CameraCache> ) 16
+
+    1C <Engine.Actor.DetachComponent> 01 <@m_kCaptureSecondary> 16
+    1C <Engine.Actor.AttachComponent> 01 <@m_kCaptureSecondary> 16
+    1C <Engine.Actor.DetachComponent> 01 <@m_kCapturePrimary> 16
+    1C <Engine.Actor.AttachComponent> 01 <@m_kCapturePrimary> 16
+
+    06 [@label_0x093D]
+
+[#label_0x0902]
+0F 01 <@m_kCamera> 2E <Class.XComCamera> 19 2E <Class.XComTacticalController> 1C <Engine.Actor.GetALocalPlayerController> 16 [@] <Engine.PlayerController.PlayerCamera> 00 ( 01 <Engine.PlayerController.PlayerCamera> )
+
+[#label_0x093D]
+04 0B
+53
