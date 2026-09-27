@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -42,13 +43,15 @@ def write_atomic(path: Path, data: bytes) -> None:
                 os.unlink(name)
 
 
-def locations(base: Path) -> tuple[Path, Path]:
+def locations(base: Path, hp: bool = True) -> tuple[Path, Path]:
     base = base.resolve()
     root = base / "XEW"
     exe = root / "Binaries" / "Win32" / "XComEW.exe"
     if not exe.is_file():
         raise FileNotFoundError(f"Expected XComEW.exe at {exe}. Select the XCom-Enemy-Unknown directory.")
     upk_dir = root / "XComGame" / "CookedPCConsole"
+    if not hp:
+        return exe, upk_dir / "XComGame.upk"
     matches = [p for p in upk_dir.glob("*.upk") if p.name.lower() == "xcomgame.upk"] if upk_dir.is_dir() else []
     if len(matches) != 1:
         raise FileNotFoundError(f"Expected XComGame.upk in {upk_dir}")
@@ -117,31 +120,8 @@ def stage_upk(upk: Path, folder: Path, uninstall: bool = False) -> bytes:
         return unpacked.read_bytes()
 
 
-def exe_bytes(exe: Path, uninstall: bool = False) -> bytes:
-    info = exe_patch.inspect(exe)
-    if not (exe_patch.is_fully_patched(info) if uninstall else exe_patch.is_clean(info)):
-        raise ValueError("XComEW.exe does not match the expected complete patch state.")
-    data = bytearray(info["data"])
-    for label, original, patched in (
-        ("cursor", exe_patch.CURSOR_ORIGINAL, exe_patch.CURSOR_PATCHED),
-        ("fov", exe_patch.FOV_ORIGINAL, exe_patch.FOV_PATCHED),
-        ("exclusions", exe_patch.EXCLUSIONS_ORIGINAL, exe_patch.EXCLUSIONS_PATCHED),
-    ):
-        old, new = (patched, original) if uninstall else (original, patched)
-        offset = info[label + ("_patched" if uninstall else "_original")][0]
-        data[offset:offset + len(old)] = new
-    result = bytes(data)
-    for original, patched in ((exe_patch.CURSOR_ORIGINAL, exe_patch.CURSOR_PATCHED),
-                              (exe_patch.FOV_ORIGINAL, exe_patch.FOV_PATCHED),
-                              (exe_patch.EXCLUSIONS_ORIGINAL, exe_patch.EXCLUSIONS_PATCHED)):
-        old, new = (patched, original) if uninstall else (original, patched)
-        if old in result or result.count(new) != 1:
-            raise RuntimeError("EXE patch verification failed.")
-    return result
-
-
 def install(base: Path, folder: Path, hp: bool, log) -> None:
-    exe, upk = locations(base)
+    exe, upk = locations(base, hp)
     state = load_state(exe)
     targets = [("exe", exe)] + ([("upk", upk)] if hp else [])
     for key, target in targets:
@@ -157,7 +137,13 @@ def install(base: Path, folder: Path, hp: bool, log) -> None:
     payloads = {}
     for key, target in pending:
         log(f"Preparing {target.name}...")
-        payloads[key] = exe_bytes(target) if key == "exe" else stage_upk(target, folder)
+        if key == "exe":
+            check_result(exe_patch.install(target, dry_run=True, show_hash=False))
+        else:
+            payloads[key] = stage_upk(target, folder)
+    # The patcher also recognizes installations made outside this UI.
+    if any(key == "exe" for key, _ in pending) and exe_patch.is_fully_patched(exe_patch.inspect(exe)):
+        pending = [(key, path) for key, path in pending if key != "exe"]
     originals = {key: target.read_bytes() for key, target in pending}
     written = []
     exe_backup = exe.with_name(exe.name + EXE_BACKUP)
@@ -166,16 +152,16 @@ def install(base: Path, folder: Path, hp: bool, log) -> None:
         if "exe" in originals:
             if exe_backup.exists():
                 raise FileExistsError(f"EXE backup already exists: {exe_backup}")
-            shutil.copy2(exe, exe_backup)
             backup_created = True
-            if digest(exe_backup) != hashlib.sha256(originals["exe"]).hexdigest():
-                raise RuntimeError("EXE backup verification failed.")
         for key, target in pending:
             original_hash = hashlib.sha256(originals[key]).hexdigest()
-            write_atomic(target, payloads[key])
             written.append((key, target))
+            if key == "exe":
+                check_result(exe_patch.install(target, dry_run=False, show_hash=False, backup_path=exe_backup))
+            else:
+                write_atomic(target, payloads[key])
             patched_hash = digest(target)
-            if patched_hash != hashlib.sha256(payloads[key]).hexdigest():
+            if key != "exe" and patched_hash != hashlib.sha256(payloads[key]).hexdigest():
                 raise RuntimeError("Installed file verification failed.")
             state["components"][key] = {"path": str(target),
                                          "original_sha256": original_hash, "patched_sha256": patched_hash}
@@ -194,7 +180,7 @@ def install(base: Path, folder: Path, hp: bool, log) -> None:
 
 
 def restore(base: Path, folder: Path, hp: bool, log) -> None:
-    exe, upk = locations(base)
+    exe, upk = locations(base, hp)
     state = load_state(exe)
     selected = [("exe", exe)] + ([("upk", upk)] if hp else [])
     ready = []
@@ -208,26 +194,29 @@ def restore(base: Path, folder: Path, hp: bool, log) -> None:
         if digest(path) != rec["patched_sha256"]:
             raise ValueError(f"{path.name} changed since installation; refusing restore.")
         ready.append((key, path, rec))
-    # An older app release did not create EXE backups; retain inverse restore for it.
+    # Validate and prepare both restores before changing either game file.
     payloads = {}
     for key, path, rec in ready:
-        if key == "exe" and "backup" in rec:
+        if key == "exe":
+            if not rec.get("backup"):
+                raise ValueError("No original EXE backup recorded; cannot restore XComEW.exe.")
             backup = Path(rec["backup"])
             if not backup.is_file() or digest(backup) != rec["original_sha256"]:
                 raise ValueError(f"Original backup missing or changed: {backup}")
             payloads[key] = backup.read_bytes()
         else:
-            payloads[key] = exe_bytes(path, True) if key == "exe" else stage_upk(path, folder, True)
-            if key == "exe" and hashlib.sha256(payloads[key]).hexdigest() != rec["original_sha256"]:
-                raise ValueError("Inverse EXE patch does not match the original hash.")
+            payloads[key] = stage_upk(path, folder, True)
     done = []
     patched_data = {key: path.read_bytes() for key, path, _ in ready}
     try:
-        for key, path, _ in ready:
-            write_atomic(path, payloads[key])
+        for key, path, rec in ready:
+            done.append((key, path))
+            if key == "exe":
+                check_result(exe_patch.restore(path, rec["backup"], dry_run=False))
+            else:
+                write_atomic(path, payloads[key])
             if digest(path) != hashlib.sha256(payloads[key]).hexdigest():
                 raise RuntimeError(f"Restore verification failed: {path}")
-            done.append((key, path))
     except Exception:
         for key, path in reversed(done):
             write_atomic(path, patched_data[key])
@@ -239,6 +228,42 @@ def restore(base: Path, folder: Path, hp: bool, log) -> None:
         if "backup" in rec:
             Path(rec["backup"]).unlink()
         log(f"Restored {path.name}")
+
+
+def check_result(result: int) -> None:
+    if result:
+        raise RuntimeError(f"EXE patcher returned error {result}; see the log for details.")
+
+
+def status(base: Path, folder: Path, hp: bool, log) -> None:
+    exe, upk = locations(base, hp)
+    check_result(exe_patch.status(exe, show_hash=True))
+    if hp:
+        record = load_state(exe)["components"].get("upk")
+        if not record:
+            log(f"{upk.name}: no managed installation")
+        else:
+            log(f"{upk.name}: " + ("installed" if digest(upk) == record["patched_sha256"] else "changed since installation"))
+
+
+class LogStream:
+    """Collect print fragments into lines for the UI's thread-safe log callback."""
+
+    def __init__(self, log):
+        self.log = log
+        self.pending = ""
+
+    def write(self, text):
+        self.pending += text
+        while "\n" in self.pending:
+            line, self.pending = self.pending.split("\n", 1)
+            self.log(line.rstrip("\r"))
+        return len(text)
+
+    def flush(self):
+        if self.pending:
+            self.log(self.pending)
+            self.pending = ""
 
 
 class Window:
@@ -256,7 +281,7 @@ class Window:
         buttons = ttk.Frame(main)
         buttons.pack(anchor="w", pady=14)
         self.buttons = []
-        for name, action in (("Install", install), ("Restore", restore)):
+        for name, action in (("Install", install), ("Restore", restore), ("Status", status)):
             b = ttk.Button(buttons, text=name, command=lambda a=action: self.start(a))
             b.pack(side="left", padx=(0, 10))
             self.buttons.append(b)
@@ -293,8 +318,13 @@ class Window:
         for b in self.buttons:
             b.configure(state="disabled")
         def work():
+            stream = LogStream(self.log)
             try:
-                action(base, folder, hp, self.log)
+                with redirect_stdout(stream), redirect_stderr(stream):
+                    try:
+                        action(base, folder, hp, self.log)
+                    finally:
+                        stream.flush()
                 self.log("Done.")
             except Exception as exc:
                 self.log(f"Error: {exc}")

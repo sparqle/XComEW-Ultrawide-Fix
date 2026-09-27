@@ -190,10 +190,14 @@ def resolve_exe(arg: str | None) -> Path:
     )
 
 
-def make_backup(path: Path) -> Path:
+def make_backup(path: Path, backup_path: Path | None = None) -> Path:
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup = path.with_name(f"{path.name}{BACKUP_TAG}{stamp}")
+    backup = backup_path or path.with_name(f"{path.name}{BACKUP_TAG}{stamp}")
+    if backup.exists():
+        raise FileExistsError(f"EXE backup already exists: {backup}")
     shutil.copy2(path, backup)
+    if sha256(backup) != sha256(path):
+        raise RuntimeError("EXE backup verification failed.")
     return backup
 
 
@@ -247,7 +251,7 @@ def status(path: Path, show_hash: bool = False) -> int:
     return 2
 
 
-def install(path: Path, dry_run: bool, show_hash: bool) -> int:
+def install(path: Path, dry_run: bool, show_hash: bool, *, backup_path: Path | None = None) -> int:
     info = inspect(path)
 
     print(f"Executable: {path}")
@@ -300,7 +304,7 @@ def install(path: Path, dry_run: bool, show_hash: bool) -> int:
         print("Dry run: all patch groups verified; no files changed.")
         return 0
 
-    backup = make_backup(path)
+    backup = make_backup(path, backup_path)
     print(f"Backup:     {backup}")
 
     try:
