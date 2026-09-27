@@ -1,5 +1,6 @@
 """Build the standalone Windows GUI using the current Python interpreter."""
 from pathlib import Path
+import shutil
 import sys
 
 
@@ -32,6 +33,11 @@ def main() -> int:
         "--add-data", f"{ROOT / 'patches' / 'Fix-ultrawide-HPBars.txt.uninstall.txt'};patches",
         str(ROOT / "src" / "app.py"),
     ])
+    binaries = ROOT / "binaries"
+    if binaries.is_dir():
+        destination = ROOT / "dist" / "binaries"
+        shutil.copytree(binaries, destination, dirs_exist_ok=True)
+        print(f"Copied binaries to {destination}")
     print(f"Built {ROOT / 'dist' / (NAME + '.exe')}")
     return 0
 
