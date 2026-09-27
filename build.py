@@ -53,6 +53,8 @@ def main() -> int:
         "--noconfirm", "--clean", "--onefile", "--windowed",
         "--name", NAME,
         "--version-file", str(version_file),
+        "--icon", str(ROOT / "assets" / "ultrawide.ico"),
+        "--add-data", str(ROOT / "assets" / "ultrawide.ico") + ";assets",
         "--distpath", str(ROOT / "dist"),
         "--workpath", str(ROOT / "build" / "pyinstaller"),
         "--specpath", str(ROOT / "build"),

@@ -318,6 +318,9 @@ class LogStream:
 class Window:
     def __init__(self):
         self.root = tk.Tk()
+        # PyInstaller extracts bundled assets beside this module in one-file builds.
+        resources = Path(__file__).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+        self.root.iconbitmap(default=str(resources / "assets" / "ultrawide.ico"))
         self.root.title(f"{APP} v{VERSION}")
         self.root.geometry("760x420")
         self.base = tk.StringVar()
