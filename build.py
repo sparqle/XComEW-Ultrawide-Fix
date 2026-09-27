@@ -29,10 +29,11 @@ def main() -> int:
         "--workpath", str(ROOT / "build" / "pyinstaller"),
         "--specpath", str(ROOT / "build"),
         "--paths", str(ROOT / "src"),
-        "--add-data", f"{ROOT / 'patches' / 'Fix-ultrawide-HPBars.txt'};patches",
-        "--add-data", f"{ROOT / 'patches' / 'Fix-ultrawide-HPBars.txt.uninstall.txt'};patches",
         str(ROOT / "src" / "app.py"),
     ])
+    mods = ROOT / "dist" / "mods"
+    mods.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(ROOT / "mods" / "Fix-ultrawide-HPBars.txt", mods)
     binaries = ROOT / "binaries"
     if binaries.is_dir():
         destination = ROOT / "dist" / "binaries"

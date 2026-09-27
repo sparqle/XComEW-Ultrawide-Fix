@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import uuid
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 import tkinter as tk
@@ -20,7 +21,6 @@ APP = "XCOM EW Ultrawide Fix"
 STATE = ".ultrawide-fix.json"
 EXE_BACKUP = ".ultrawide-fix.original"
 SCRIPT = "Fix-ultrawide-HPBars.txt"
-UNINSTALL = SCRIPT + ".uninstall.txt"
 
 
 def digest(path: Path) -> str:
@@ -83,14 +83,27 @@ def tool(name: str, folder: Path) -> Path:
     return p.resolve()
 
 
+def app_folder() -> Path:
+    return Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
+
+
 def binaries_folder() -> Path:
-    app_dir = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
-    return app_dir / "binaries"
+    return app_folder() / "binaries"
 
 
-def patch_script(uninstall: bool = False) -> Path:
-    root = Path(sys._MEIPASS) if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
-    return root / "patches" / (UNINSTALL if uninstall else SCRIPT)
+def patch_script() -> Path:
+    return app_folder() / "mods" / SCRIPT
+
+
+def size_file(upk: Path) -> Path:
+    return upk.with_name(upk.name + ".uncompressed_size")
+
+
+def restore_size_file(upk: Path, data: bytes | None) -> None:
+    if data is not None:
+        write_atomic(size_file(upk), data)
+    else:
+        size_file(upk).unlink(missing_ok=True)
 
 
 def run_tool(args: list[str], cwd: Path) -> None:
@@ -100,12 +113,14 @@ def run_tool(args: list[str], cwd: Path) -> None:
         raise RuntimeError(f"{Path(args[0]).name} failed ({p.returncode}):\n{(p.stdout + p.stderr)[-3000:]}")
 
 
-def stage_upk(upk: Path, folder: Path, uninstall: bool = False) -> bytes:
+def stage_upk(upk: Path, folder: Path, script: Path, *, uninstall: bool = False) -> tuple[bytes, bytes | None]:
     decompress = tool("DecompressLZO", folder)
     patch = tool("PatchUPK", folder)
-    script = patch_script(uninstall)
     with tempfile.TemporaryDirectory(prefix="xcomew-ultrawide-") as temp:
         work = Path(temp)
+        # Keep generated uninstall files isolated from previous installations.
+        staged_script = work / script.name
+        shutil.copy2(script, staged_script)
         # DecompressLZO writes the output path; PatchUPK finds XComGame.upk in the directory.
         unpacked = work / "XComGame.upk"
         try:
@@ -119,10 +134,16 @@ def stage_upk(upk: Path, folder: Path, uninstall: bool = False) -> bytes:
         if not unpacked.is_file() or not unpacked.stat().st_size:
             raise RuntimeError("DecompressLZO did not produce XComGame.upk.")
         before = digest(unpacked)
-        run_tool([str(patch), str(script), str(work)], work)
+        run_tool([str(patch), str(staged_script), str(work)], work)
         if digest(unpacked) == before:
             raise RuntimeError("PatchUPK made no change to the staged UPK.")
-        return unpacked.read_bytes()
+        undo = None
+        if not uninstall:
+            generated = staged_script.with_name(staged_script.name + ".uninstall.txt")
+            if not generated.is_file() or not generated.stat().st_size:
+                raise RuntimeError("PatchUPK did not generate an uninstall script; no game files changed.")
+            undo = generated.read_bytes()
+        return unpacked.read_bytes(), undo
 
 
 def install(base: Path, folder: Path, hp: bool, log) -> None:
@@ -140,12 +161,13 @@ def install(base: Path, folder: Path, hp: bool, log) -> None:
         return
     # Prepare and validate both changes before writing either game file.
     payloads = {}
+    uninstall_data = None
     for key, target in pending:
         log(f"Preparing {target.name}...")
         if key == "exe":
             check_result(exe_patch.install(target, dry_run=True, show_hash=False))
         else:
-            payloads[key] = stage_upk(target, folder)
+            payloads[key], uninstall_data = stage_upk(target, folder, patch_script())
     # The patcher also recognizes installations made outside this UI.
     if any(key == "exe" for key, _ in pending) and exe_patch.is_fully_patched(exe_patch.inspect(exe)):
         pending = [(key, path) for key, path in pending if key != "exe"]
@@ -153,7 +175,12 @@ def install(base: Path, folder: Path, hp: bool, log) -> None:
     written = []
     exe_backup = exe.with_name(exe.name + EXE_BACKUP)
     backup_created = False
+    sidecar_data = size_file(upk).read_bytes() if "upk" in originals and size_file(upk).exists() else None
+    uninstall_path = None
     try:
+        if uninstall_data is not None:
+            uninstall_path = app_folder() / "mods" / f"{SCRIPT}.{uuid.uuid4().hex}.uninstall.txt"
+            write_atomic(uninstall_path, uninstall_data)
         if "exe" in originals:
             if exe_backup.exists():
                 raise FileExistsError(f"EXE backup already exists: {exe_backup}")
@@ -165,6 +192,7 @@ def install(base: Path, folder: Path, hp: bool, log) -> None:
                 check_result(exe_patch.install(target, dry_run=False, show_hash=False, backup_path=exe_backup))
             else:
                 write_atomic(target, payloads[key])
+                size_file(target).unlink(missing_ok=True)
             patched_hash = digest(target)
             if key != "exe" and patched_hash != hashlib.sha256(payloads[key]).hexdigest():
                 raise RuntimeError("Installed file verification failed.")
@@ -172,15 +200,22 @@ def install(base: Path, folder: Path, hp: bool, log) -> None:
                                          "original_sha256": original_hash, "patched_sha256": patched_hash}
             if key == "exe":
                 state["components"][key]["backup"] = str(exe_backup)
+            else:
+                state["components"][key]["uninstall"] = uninstall_path.relative_to(app_folder()).as_posix()
+                state["components"][key]["uninstall_sha256"] = digest(uninstall_path)
             save_state(exe, state)
             log(f"Installed {target.name}")
     except Exception:
         for key, target in reversed(written):
             write_atomic(target, originals[key])
+            if key == "upk":
+                restore_size_file(target, sidecar_data)
             state["components"].pop(key, None)
         save_state(exe, state)
         if backup_created and exe_backup.exists():
             exe_backup.unlink()
+        if uninstall_path is not None:
+            uninstall_path.unlink(missing_ok=True)
         raise
 
 
@@ -210,9 +245,17 @@ def restore(base: Path, folder: Path, hp: bool, log) -> None:
                 raise ValueError(f"Original backup missing or changed: {backup}")
             payloads[key] = backup.read_bytes()
         else:
-            payloads[key] = stage_upk(path, folder, True)
+            if not rec.get("uninstall") or not rec.get("uninstall_sha256"):
+                raise ValueError("No generated uninstall script recorded for this UPK installation; restore it with the original patching tool or backup.")
+            script = (app_folder() / rec["uninstall"]).resolve()
+            if not script.is_relative_to((app_folder() / "mods").resolve()):
+                raise ValueError("Recorded uninstall script must be in the application's mods directory.")
+            if not script.is_file() or digest(script) != rec["uninstall_sha256"]:
+                raise ValueError(f"Uninstall script missing or changed: {script}")
+            payloads[key], _ = stage_upk(path, folder, script, uninstall=True)
     done = []
     patched_data = {key: path.read_bytes() for key, path, _ in ready}
+    sidecar_data = size_file(upk).read_bytes() if "upk" in patched_data and size_file(upk).exists() else None
     try:
         for key, path, rec in ready:
             done.append((key, path))
@@ -220,11 +263,14 @@ def restore(base: Path, folder: Path, hp: bool, log) -> None:
                 check_result(exe_patch.restore(path, rec["backup"], dry_run=False))
             else:
                 write_atomic(path, payloads[key])
+                size_file(path).unlink(missing_ok=True)
             if digest(path) != hashlib.sha256(payloads[key]).hexdigest():
                 raise RuntimeError(f"Restore verification failed: {path}")
     except Exception:
         for key, path in reversed(done):
             write_atomic(path, patched_data[key])
+            if key == "upk":
+                restore_size_file(path, sidecar_data)
         raise
     for key, path in done:
         del state["components"][key]
