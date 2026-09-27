@@ -32,9 +32,10 @@ to their original state.
 2. Run `XComEW-Ultrawide-Fix.exe` and choose your **`XCom-Enemy-Unknown`** folder you previously installed in.
 3. Click **Restore** to restore.
 
-This will restore the original `XComEW.exe` that was backed up to
-`XComEW.exe.ultrawide-complete-backup-YYYYMMDD-HHIISS.exe`. It will also use an uninstall patch to restore the health
-bar modification in `XComGame.upk`.
+This will restore the original `XComEW.exe` that was backed up in the `backups` directory, checking whether the binary was changed in the mean time. It will also use an uninstall patch to restore the health
+bar modification in `XComGame.upk`. 
+
+You can also **force a restore**, which will use the last backup and ignore any checks on whether the binary was changed in the mean time.
 
 ## Tested configurations
 
