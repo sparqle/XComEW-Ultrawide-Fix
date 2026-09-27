@@ -232,8 +232,63 @@ def install(base: Path, folder: Path, log) -> None:
         raise
 
 
-def restore(base: Path, folder: Path, log) -> None:
+def latest_backup() -> Path:
+    candidates = []
+    for directory in (app_folder() / "backups").glob("*"):
+        exe = directory / "XComEW.exe"
+        undo = directory / Path(SCRIPT).with_suffix(".uninstall.txt").name
+        if exe.is_file() and undo.is_file() and exe.stat().st_size and undo.stat().st_size:
+            backup_file(str(exe))
+            backup_file(str(undo))
+            candidates.append(directory)
+    if not candidates:
+        raise FileNotFoundError("No complete backup found in the application's backups directory.")
+    return max(candidates, key=lambda directory: (
+        max((directory / "XComEW.exe").stat().st_mtime_ns,
+            (directory / Path(SCRIPT).with_suffix(".uninstall.txt").name).stat().st_mtime_ns),
+        directory.name,
+    ))
+
+
+def force_restore(base: Path, folder: Path, log, *, backup: Path | None = None) -> None:
     exe, upk = locations(base)
+    source = backup if backup is not None else latest_backup()
+    original = backup_file(str(source / "XComEW.exe"))
+    script = backup_file(str(source / Path(SCRIPT).with_suffix(".uninstall.txt").name))
+    # Check recorded backup hashes when available, but allow recovery without state.
+    state_path = source / STATE
+    if state_path.exists():
+        records = json.loads(state_path.read_text(encoding="utf-8"))["components"]
+        for key, path, field in (("exe", original, "original_sha256"), ("upk", script, "uninstall_sha256")):
+            expected = records.get(key, {}).get(field)
+            if expected and digest(path) != expected:
+                raise ValueError(f"Backup file changed: {path}")
+    log(f"Force restoring from {source}")
+    original_data = original.read_bytes()
+    if not original_data or not script.stat().st_size:
+        raise ValueError("Backup files must not be empty.")
+    restored_upk, _ = stage_upk(upk, folder, script, uninstall=True)
+    previous = {exe: exe.read_bytes(), upk: upk.read_bytes()}
+    sidecar = size_file(upk).read_bytes() if size_file(upk).exists() else None
+    written = []
+    try:
+        for path, payload in ((exe, original_data), (upk, restored_upk)):
+            written.append(path)
+            write_atomic(path, payload)
+            if path == upk:
+                size_file(upk).unlink(missing_ok=True)
+            if digest(path) != hashlib.sha256(payload).hexdigest():
+                raise RuntimeError(f"Restore verification failed: {path}")
+        save_state(exe, {"version": 2, "components": {}})
+    except Exception:
+        for path in reversed(written):
+            write_atomic(path, previous[path])
+        restore_size_file(upk, sidecar)
+        raise
+    log("Force restored XComEW.exe and XComGame.upk; backup files retained.")
+
+
+def restore(base: Path, folder: Path, log) -> None:
     exe, upk = locations(base)
     state = load_state(exe)
     selected = [("exe", exe), ("upk", upk)]
@@ -344,7 +399,7 @@ class Window:
         buttons = ttk.Frame(main)
         buttons.pack(anchor="w", pady=14)
         self.buttons = []
-        for name, action in (("Install", install), ("Restore", restore), ("Status", status)):
+        for name, action in (("Install", install), ("Restore", restore), ("Force Restore", force_restore), ("Status", status)):
             b = ttk.Button(buttons, text=name, command=lambda a=action: self.start(a))
             b.pack(side="left", padx=(0, 10))
             self.buttons.append(b)
@@ -394,6 +449,15 @@ class Window:
             return
         self.save_base()
         base, folder = Path(value), binaries_folder()
+        if action is force_restore:
+            try:
+                backup = latest_backup()
+            except Exception as exc:
+                messagebox.showerror(APP, str(exc))
+                return
+            if not messagebox.askyesno(APP, f"Force restore {base} using the newest complete backup?\n\n{backup}\n\nThis bypasses installed-file and recorded-path checks and may overwrite other modifications. The backup may be from another installation.", default="no"):
+                return
+            action = lambda base, folder, log: force_restore(base, folder, log, backup=backup)
         for b in self.buttons:
             b.configure(state="disabled")
         def work():

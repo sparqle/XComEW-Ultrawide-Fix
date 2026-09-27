@@ -1,4 +1,5 @@
 import sys
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -129,6 +130,64 @@ class UpkWorkflowTests(unittest.TestCase):
             result = app.stage_upk(self.upk, self.root, app.patch_script())
         self.assertEqual(result, (b"patched", b"generated"))
         self.assertEqual(self.upk.read_bytes(), b"original")
+
+    def make_force_backup(self, name, timestamp):
+        directory = self.root / "backups" / name
+        directory.mkdir(parents=True, exist_ok=True)
+        for filename, data in (("XComEW.exe", b"original exe"), ("Fix-ultrawide-Tactical.uninstall.txt", b"undo")):
+            path = directory / filename
+            path.write_bytes(data)
+            os.utime(path, (timestamp, timestamp))
+        return directory
+
+    def test_force_selects_latest_complete_backup_without_state(self):
+        self.make_force_backup("older", 100)
+        newest = self.make_force_backup("newer", 200)
+        incomplete = self.make_force_backup("incomplete", 300)
+        (incomplete / "XComEW.exe").unlink()
+        self.assertEqual(app.latest_backup(), newest)
+        with patch.object(app, "stage_upk", return_value=(b"restored upk", None)) as stage:
+            app.force_restore(self.root, self.root, lambda _: None)
+            self.assertEqual(stage.call_args.args[2].parent, newest)
+        self.assertEqual(self.exe.read_bytes(), b"original exe")
+        self.assertEqual(self.upk.read_bytes(), b"restored upk")
+        self.assertTrue((newest / "XComEW.exe").exists())
+        self.assertFalse((app.backup_directory(self.exe) / app.STATE).exists())
+
+    def test_force_staging_failure_does_not_change_game(self):
+        self.make_force_backup("newest", 200)
+        with patch.object(app, "stage_upk", side_effect=RuntimeError("patch failed")):
+            with self.assertRaisesRegex(RuntimeError, "patch failed"):
+                app.force_restore(self.root, self.root, lambda _: None)
+        self.assertEqual(self.exe.read_bytes(), b"exe")
+        self.assertEqual(self.upk.read_bytes(), b"original")
+
+    def test_force_write_failure_rolls_back_both_files(self):
+        self.make_force_backup("newest", 200)
+        real_write = app.write_atomic
+        def fail_upk(path, data):
+            if path == self.upk and data == b"restored upk":
+                raise OSError("write failed")
+            real_write(path, data)
+        with patch.object(app, "stage_upk", return_value=(b"restored upk", None)), \
+                patch.object(app, "write_atomic", side_effect=fail_upk):
+            with self.assertRaisesRegex(OSError, "write failed"):
+                app.force_restore(self.root, self.root, lambda _: None)
+        self.assertEqual(self.exe.read_bytes(), b"exe")
+        self.assertEqual(self.upk.read_bytes(), b"original")
+        self.assertEqual(app.size_file(self.upk).read_bytes(), b"size")
+
+    def test_force_rejects_changed_backup(self):
+        directory = self.make_force_backup("newest", 200)
+        (directory / app.STATE).write_text('{"components":{"exe":{"original_sha256":"wrong"}}}')
+        with patch.object(app, "stage_upk") as stage:
+            with self.assertRaisesRegex(ValueError, "Backup file changed"):
+                app.force_restore(self.root, self.root, lambda _: None)
+            stage.assert_not_called()
+
+    def test_force_requires_complete_backup(self):
+        with self.assertRaisesRegex(FileNotFoundError, "No complete backup"):
+            app.latest_backup()
 
 
 if __name__ == "__main__":
