@@ -5,6 +5,7 @@ import sys
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from src.version import VERSION
+from src.game_path import CONFIG
 
 ROOT = Path(__file__).resolve().parent
 NAME = "XComEW-Ultrawide-Fix"
@@ -78,6 +79,8 @@ def main() -> int:
             if not path.is_file() or path.suffix.lower() == ".zip":
                 continue
             relative = path.relative_to(dist)
+            if relative.as_posix().lower() == CONFIG.lower():
+                continue
             if relative.parts[0].lower() == "mods" and path.name.lower().endswith(".uninstall.txt"):
                 continue
             bundle.write(path, relative)

@@ -16,6 +16,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 import exe_patcher as exe_patch
+from game_path import find_game_directory, load_game_directory, save_game_directory
 from version import VERSION
 
 APP = "XCOM EW Ultrawide Fix"
@@ -337,10 +338,8 @@ class Window:
             self.buttons.append(b)
         self.output = tk.Text(main, height=9, state="disabled", wrap="word")
         self.output.pack(fill="both", expand=True)
-        for candidate in exe_patch.default_candidates():
-            if candidate.is_file():
-                self.base.set(str(candidate.parent.parent.parent.parent))
-                break
+        self.base.set(load_game_directory(app_folder()))
+        self.root.protocol("WM_DELETE_WINDOW", self.close)
 
     def row(self, parent, label, var, browse):
         line = ttk.Frame(parent)
@@ -350,9 +349,21 @@ class Window:
         ttk.Button(line, text="Browse…", command=browse).pack(side="left", padx=(8, 0))
 
     def choose_base(self):
-        value = filedialog.askdirectory(title="Select XCom-Enemy-Unknown folder")
+        initial = find_game_directory(self.base.get())
+        value = filedialog.askdirectory(title="Select XCom-Enemy-Unknown folder", initialdir=initial or None)
         if value:
             self.base.set(value)
+            self.save_base()
+
+    def save_base(self):
+        try:
+            save_game_directory(app_folder(), self.base.get())
+        except OSError as exc:
+            self.log(f"Could not save the selected folder: {exc}")
+
+    def close(self):
+        self.save_base()
+        self.root.destroy()
 
     def log(self, message):
         self.root.after(0, self._log, message)
@@ -364,7 +375,13 @@ class Window:
         self.output.configure(state="disabled")
 
     def start(self, action):
-        base, folder = Path(self.base.get()), binaries_folder()
+        value = find_game_directory(self.base.get())
+        self.base.set(value)
+        if not value:
+            messagebox.showerror(APP, "Could not locate XCOM. Select your XCom-Enemy-Unknown folder.")
+            return
+        self.save_base()
+        base, folder = Path(value), binaries_folder()
         for b in self.buttons:
             b.configure(state="disabled")
         def work():
