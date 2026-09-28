@@ -43,10 +43,6 @@ class PhoneHomeTests(unittest.TestCase):
                 backup = exe.with_name("XComEW.exe.bak")
                 backup.write_bytes(b"first backup")
                 with patch.object(app, "app_folder", return_value=root):
-                    state = {"version": 2, "components": {
-                        "exe": {"patched_sha256": "stale hash"},
-                        "upk": {"untouched": True}}}
-                    app.save_state(exe, state)
                     real_write = app.write_atomic
                     def write(path, data):
                         real_write(path, data)
@@ -60,7 +56,6 @@ class PhoneHomeTests(unittest.TestCase):
                             app.disable_phone_home(root, None, lambda _: None)
                             app.disable_phone_home(root, None, lambda _: None)
                     self.assertEqual(exe.read_bytes(), original if fail else executable("xcm.invalid"))
-                    self.assertEqual(app.load_state(exe), state)
                     self.assertEqual(backup.read_bytes(), b"first backup")
                     self.assertEqual(list((root / "backups").rglob("*.exe")), [])
 

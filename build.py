@@ -68,11 +68,9 @@ def main() -> int:
     shutil.copy2(ROOT / "README.md", ROOT / "dist" / "README.md")
     shutil.copy2(ROOT / "LICENSE", ROOT / "dist" / "LICENSE")
     dist = ROOT / "dist"
-    (dist / "backups").mkdir(exist_ok=True)
     archive = dist / f"{NAME}-{VERSION}.zip"
     # Exclude third-party files even when left in dist by an earlier build.
     with ZipFile(archive, "w", compression=ZIP_DEFLATED) as bundle:
-        bundle.writestr("backups/", b"")
         for path in sorted(dist.rglob("*")):
             if not path.is_file():
                 continue

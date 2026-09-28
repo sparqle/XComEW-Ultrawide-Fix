@@ -55,10 +55,6 @@ Tested at 3440x1440 in **XCOM: Enemy Within** and **Long War**, starting mission
 This backs up and patches `XComEW.exe`, leaving `XComGame.upk` unchanged. PatcherGUI and
 the **UPK tools folder** are not required for this option; This is useful if you want to manage these patches yourself in PatcherGUI.
 
-**Advanced → Force Restore**.
-Uses the saved UPK uninstall script without the UPK hash/path checks, then removes the
-script after success. It reverses the EXE patch in place, preserving unrelated EXE edits.
-
 **Advanced → Disable Phone Home**.
 Replace the executable's `firaxis.com` or PatcherGUI's `yiraxis.com` address with `xcm.invalid`. 
 Because guess what? yiraxis.com exists nowadays. Unlike an unregistered `.com`, `.invalid` is 
