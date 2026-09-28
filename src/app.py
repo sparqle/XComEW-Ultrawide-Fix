@@ -45,12 +45,18 @@ def write_atomic(path: Path, data: bytes) -> None:
                 os.unlink(name)
 
 
-def locations(base: Path) -> tuple[Path, Path]:
+def executable_location(base: Path) -> Path:
     base = base.resolve()
     root = base / "XEW"
     exe = root / "Binaries" / "Win32" / "XComEW.exe"
     if not exe.is_file():
         raise FileNotFoundError(f"Expected XComEW.exe at {exe}. Select the XCom-Enemy-Unknown directory.")
+    return exe
+
+
+def locations(base: Path) -> tuple[Path, Path]:
+    exe = executable_location(base)
+    root = base.resolve() / "XEW"
     upk_dir = root / "XComGame" / "CookedPCConsole"
     matches = [p for p in upk_dir.glob("*.upk") if p.name.lower() == "xcomgame.upk"] if upk_dir.is_dir() else []
     if len(matches) != 1:
@@ -166,11 +172,16 @@ def stage_upk(upk: Path, folder: Path, script: Path, *, uninstall: bool = False)
         return unpacked.read_bytes(), undo
 
 
-def install(base: Path, folder: Path, log, *, replace_backup: bool = False) -> None:
-    log('--- Installing... ---')
-    exe, upk = locations(base)
+def install_executable(base: Path, folder: Path | None, log, *, replace_backup: bool = False) -> None:
+    install(base, folder, log, replace_backup=replace_backup, executable_only=True)
+
+
+def install(base: Path, folder: Path | None, log, *, replace_backup: bool = False,
+            executable_only: bool = False) -> None:
+    log('--- Installing executable only... ---' if executable_only else '--- Installing... ---')
+    exe, upk = (executable_location(base), None) if executable_only else locations(base)
     state = load_state(exe)
-    targets = [("exe", exe), ("upk", upk)]
+    targets = [("exe", exe)] if executable_only else [("exe", exe), ("upk", upk)]
     for key, target in targets:
         record = state["components"].get(key)
         if record:
@@ -180,7 +191,7 @@ def install(base: Path, folder: Path, log, *, replace_backup: bool = False) -> N
     pending = [(key, path) for key, path in targets if key not in state["components"]]
     if not pending:
         return
-    # Prepare and validate both changes before writing either game file.
+    # Prepare and validate all selected changes before writing any game file.
     payloads = {}
     uninstall_data = None
     for key, target in pending:
@@ -438,10 +449,17 @@ class Window:
         buttons = ttk.Frame(main)
         buttons.pack(anchor="w", pady=14)
         self.buttons = []
-        for name, action in (("Install", install), ("Restore", restore), ("Force Restore", force_restore), ("Status", status)):
+        for name, action in (("Install", install), ("Restore", restore), ("Status", status)):
             b = ttk.Button(buttons, text=name, command=lambda a=action: self.start(a))
             b.pack(side="left", padx=(0, 10))
             self.buttons.append(b)
+        advanced = ttk.Menubutton(buttons, text="Advanced")
+        advanced_menu = tk.Menu(advanced, tearoff=False)
+        for name, action in (("Install EXE only", install_executable), ("Force Restore", force_restore)):
+            advanced_menu.add_command(label=name, command=lambda a=action: self.start(a))
+        advanced.configure(menu=advanced_menu)
+        advanced.pack(side="left", padx=(0, 10))
+        self.buttons.append(advanced)
         self.output = tk.Text(main, height=9, state="disabled", wrap="word")
         self.output.pack(fill="both", expand=True)
         self.base.set(load_game_directory(app_folder()))
@@ -494,19 +512,20 @@ class Window:
         self.save_base()
         base = Path(value)
         try:
-            folder = binaries_folder(self.tools_path.get())
+            folder = None if action is install_executable else binaries_folder(self.tools_path.get())
         except (OSError, ValueError) as exc:
             messagebox.showerror(APP, f"{exc}\n\nDownload PatcherGUI or UPKUtils separately and select the folder containing DecompressLZO.exe and PatchUPK.exe.")
             return
-        if action is install:
+        if action in (install, install_executable):
             try:
-                exe, _ = locations(base)
+                exe = executable_location(base)
                 backup = backup_directory(exe) / exe.name
                 needs_backup = "exe" not in load_state(exe)["components"]
                 if needs_backup and backup.is_file() and digest(backup) == digest(exe):
                     if not messagebox.askyesno(APP, f"An existing backup has the same SHA-256 hash as XComEW.exe.\n\n{backup}\n\nReplace this backup and continue installing?", default="no"):
                         return
-                    action = lambda base, folder, log: install(base, folder, log, replace_backup=True)
+                    install_action = action
+                    action = lambda base, folder, log: install_action(base, folder, log, replace_backup=True)
             except Exception as exc:
                 messagebox.showerror(APP, str(exc))
                 return

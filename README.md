@@ -24,9 +24,6 @@ browse to your "XCom-Enemy-Unknown" directory (not the XEW directory inside it).
 5. Set **UPK tools folder** to the extracted PatcherGUI directory.
 6. Click **Install** to install.
 
-If **UPK tools folder** is blank, the app checks the `third_party` directory beside the executable
-(or in the repository root when running from source), then its `Binaries` subdirectory. Both executables must be together in one of these directories.
-
 It will binary patch `XComEW.exe` and use the PatchUPK from [UPKUtils](https://github.com/wghost/UPKUtils) to modify
 `XComGame.upk`.
 
@@ -43,8 +40,6 @@ to their original state.
 This will restore the original `XComEW.exe` that was backed up in the `backups` directory, checking whether the binary was changed in the meantime. It will also use an uninstall patch to restore the health
 bar modification in `XComGame.upk`. 
 
-You can also **force a restore**, which will use the last backup and ignore any checks on whether the binary was changed in the meantime.
-
 ## Tested configurations
 
 Tested at 3440x1440 in **XCOM: Enemy Within** and **Long War**, starting missions and screens.
@@ -54,6 +49,16 @@ Tested at 3440x1440 in **XCOM: Enemy Within** and **Long War**, starting mission
 * XCOM: Enemy Unknown not supported
 * Game still works fine on 16:9 resolutions.
 * Game will not work well on narrower aspect ratios such as 5:4 or 4:3.
+
+## Advanced menu
+
+**Advanced → Install EXE only**.
+This backs up and patches `XComEW.exe`, leaving `XComGame.upk` unchanged. PatcherGUI and
+the **UPK tools folder** are not required for this option; This is useful if you want to manage these patches yourself in PatcherGUI.
+
+**Advanced → Force Restore**.
+Will use the last backup and ignore any checks on whether the binary was changed in the meantime.
+
 
 ## What was borked
 

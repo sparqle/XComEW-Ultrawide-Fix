@@ -29,6 +29,37 @@ class UpkWorkflowTests(unittest.TestCase):
         app.save_state(self.exe, {"version": 2, "components": {
             "exe": {"path": str(self.exe), "patched_sha256": app.digest(self.exe)}}})
 
+    def test_executable_only_preserves_upk_and_its_state(self):
+        upk_record = {"patched_sha256": "previous installation", "uninstall": "saved script"}
+        app.save_state(self.exe, {"version": 2, "components": {"upk": upk_record}})
+
+        def install_exe(path, *, dry_run, show_hash, backup_path=None):
+            if not dry_run:
+                backup_path.write_bytes(path.read_bytes())
+                path.write_bytes(b"patched exe")
+            return 0
+
+        with patch.object(app.exe_patch, "install", side_effect=install_exe), \
+                patch.object(app.exe_patch, "inspect"), \
+                patch.object(app.exe_patch, "is_fully_patched", return_value=False), \
+                patch.object(app, "stage_upk") as stage:
+            app.install_executable(self.root, None, lambda _: None)
+            stage.assert_not_called()
+        self.assertEqual(self.exe.read_bytes(), b"patched exe")
+        state = app.load_state(self.exe)["components"]
+        self.assertEqual(app.backup_file(state["exe"]["backup"]).read_bytes(), b"exe")
+        self.assertEqual(state["upk"], upk_record)
+        self.assertEqual(self.upk.read_bytes(), b"original")
+        self.assertEqual(app.size_file(self.upk).read_bytes(), b"size")
+
+    def test_executable_only_does_not_require_upk(self):
+        self.upk.unlink()
+        with patch.object(app, "stage_upk") as stage:
+            app.install_executable(self.root, None, lambda _: None)
+            stage.assert_not_called()
+        self.assertFalse(self.upk.exists())
+        self.assertEqual(set(app.load_state(self.exe)["components"]), {"exe"})
+
     def test_install_and_restore_use_saved_script(self):
         with patch.object(app, "stage_upk", return_value=(b"patched", b"generated undo")):
             app.install(self.root, self.root, lambda _: None)
