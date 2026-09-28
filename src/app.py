@@ -424,10 +424,9 @@ class Window:
         ttk.Label(main, text=f"XCOM: Enemy Within - Ultrawide Fix - v{VERSION}", font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(0, 14))
         self.row(main, "XCom-Enemy-Unknown Folder", self.base, self.choose_base)
         self.row(main, "UPK tools folder", self.tools_path, self.choose_tools)
-        ttk.Label(main, text="Select the folder containing DecompressLZO.exe and PatchUPK.exe, these are bundled with PatcherGUI or UPKUtils.").pack(anchor="w", pady=(4, 0))
         download_line = ttk.Frame(main)
         download_line.pack(anchor="w")
-        ttk.Label(download_line, text="Download one of these tools separately from ").pack(side="left")
+        ttk.Label(download_line, text="Select the folder containing PatcherGUI or UPKUtils. Download one of these tools separately from").pack(side="left")
         self.link_font = tkfont.nametofont("TkDefaultFont").copy()
         self.link_font.configure(underline=True)
         nexus_link = ttk.Label(download_line, text="Nexusmods", foreground="#0563C1",
@@ -435,7 +434,7 @@ class Window:
         nexus_link.pack(side="left")
         for event in ("<Button-1>", "<Return>", "<space>"):
             nexus_link.bind(event, lambda _: webbrowser.open("https://www.nexusmods.com/xcom/mods/448"))
-        ttk.Label(download_line, text=" or GitHub.").pack(side="left")
+        ttk.Label(download_line, text="or GitHub.").pack(side="left")
         buttons = ttk.Frame(main)
         buttons.pack(anchor="w", pady=14)
         self.buttons = []
