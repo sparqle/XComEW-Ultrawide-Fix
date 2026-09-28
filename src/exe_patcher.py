@@ -98,6 +98,31 @@ if len(EXCLUSIONS_ORIGINAL) != len(EXCLUSIONS_PATCHED):
 
 
 BACKUP_TAG = ".ultrawide-complete-backup-"
+PHONE_HOME_ORIGINAL = "firaxis.com"
+PHONE_HOME_LEGACY = "yiraxis.com"
+# Same UTF-16LE byte length as the original; .invalid is reserved by RFC 2606.
+PHONE_HOME_DISABLED = "xcm.invalid"
+
+
+def disable_phone_home(data: bytes) -> bytes:
+    """Replace the original or PatcherGUI host without moving any EXE bytes."""
+    replacement = PHONE_HOME_DISABLED.encode("utf-16le")
+    result = data
+    found = False
+    for host in (PHONE_HOME_ORIGINAL, PHONE_HOME_LEGACY, PHONE_HOME_DISABLED):
+        needle = host.encode("utf-16le")
+        if len(needle) != len(replacement):
+            raise RuntimeError("Phone home patch sizes do not match")
+        for offset in find_all(data, needle):
+            # Require a UTF-16 host ending, not a substring of another domain.
+            end = offset + len(needle)
+            if offset % 2 or data[end:end + 2] not in (b"\0\0", b"/\0", b":\0", b"?\0", b"#\0"):
+                continue
+            found = True
+            result = result[:offset] + replacement + result[end:]
+    if not found:
+        raise ValueError("No recognized phone home address found; no changes made.")
+    return result
 
 
 def sha256(path: Path) -> str:

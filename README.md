@@ -59,6 +59,11 @@ the **UPK tools folder** are not required for this option; This is useful if you
 **Advanced → Force Restore**.
 Will use the last backup and ignore any checks on whether the binary was changed in the meantime.
 
+**Advanced → Disable Phone Home**.
+Replace the executable's `firaxis.com` or PatcherGUI's `yiraxis.com` address with `xcm.invalid`. 
+Because guess what? yiraxis.com exists nowadays. Unlike an unregistered `.com`, `.invalid` is 
+[reserved for invalid domain names](https://www.rfc-editor.org/rfc/rfc2606).
+This option requires no UPK tools and leaves UPK files unchanged.
 
 ## What was borked
 

@@ -267,6 +267,45 @@ def install(base: Path, folder: Path | None, log, *, replace_backup: bool = Fals
         raise
 
 
+def disable_phone_home(base: Path, folder: Path | None, log) -> None:
+    log("--- Disabling phone home... ---")
+    exe = executable_location(base)
+    original = exe.read_bytes()
+    original_hash = hashlib.sha256(original).hexdigest()
+    state = load_state(exe)
+    record = state["components"].get("exe")
+    if record and (Path(record["path"]) != exe or record["patched_sha256"] != original_hash):
+        raise ValueError("XComEW.exe changed since installation; refusing to overwrite it.")
+    patched = exe_patch.disable_phone_home(original)
+    if patched == original:
+        log(f"Phone home already disabled: {exe_patch.PHONE_HOME_DISABLED}")
+        return
+    backup = backup_directory(exe) / f"XComEW.phone-home-{original_hash}.exe"
+    backup.parent.mkdir(parents=True, exist_ok=True)
+    if backup.exists():
+        if digest(backup) != original_hash:
+            raise ValueError(f"Phone home backup changed: {backup}")
+    else:
+        exe_patch.make_backup(exe, backup)
+    log(f"EXE backup: {backup}")
+    try:
+        write_atomic(exe, patched)
+        patched_hash = hashlib.sha256(patched).hexdigest()
+        if digest(exe) != patched_hash:
+            raise RuntimeError("Phone home patch verification failed.")
+        # Keep the managed ultrawide install restorable after this EXE edit.
+        if record:
+            record["patched_sha256"] = patched_hash
+            save_state(exe, state)
+    except Exception:
+        write_atomic(exe, original)
+        if record:
+            record["patched_sha256"] = original_hash
+            save_state(exe, state)
+        raise
+    log(f"Phone home address replaced with {exe_patch.PHONE_HOME_DISABLED}")
+
+
 def latest_backup() -> Path:
     candidates = []
     for directory in (app_folder() / "backups").glob("*"):
@@ -455,7 +494,8 @@ class Window:
             self.buttons.append(b)
         advanced = ttk.Menubutton(buttons, text="Advanced")
         advanced_menu = tk.Menu(advanced, tearoff=False)
-        for name, action in (("Install EXE only", install_executable), ("Force Restore", force_restore)):
+        for name, action in (("Install EXE only", install_executable),
+                             ("Improved Disable Phone Home", disable_phone_home), ("Force Restore", force_restore)):
             advanced_menu.add_command(label=name, command=lambda a=action: self.start(a))
         advanced.configure(menu=advanced_menu)
         advanced.pack(side="left", padx=(0, 10))
@@ -512,10 +552,17 @@ class Window:
         self.save_base()
         base = Path(value)
         try:
-            folder = None if action is install_executable else binaries_folder(self.tools_path.get())
+            folder = None if action in (install_executable, disable_phone_home) else binaries_folder(self.tools_path.get())
         except (OSError, ValueError) as exc:
             messagebox.showerror(APP, f"{exc}\n\nDownload PatcherGUI or UPKUtils separately and select the folder containing DecompressLZO.exe and PatchUPK.exe.")
             return
+        if action is disable_phone_home:
+            if not messagebox.askyesno(APP,
+                    f"Improve disable phone home using the domain {exe_patch.PHONE_HOME_DISABLED}?\n\n"
+                    f"PatcherGUI uses {exe_patch.PHONE_HOME_LEGACY}, which is now registered and is no longer a safe blocking address.\n\n"
+                    "The new xcm.invalid address is reserved and cannot be registered. Close the game first.",
+                    default="no"):
+                return
         if action in (install, install_executable):
             try:
                 exe = executable_location(base)
