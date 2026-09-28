@@ -1,5 +1,5 @@
 import sys
-import os
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,10 +13,13 @@ class UpkWorkflowTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.exe = self.root / "XEW/Binaries/Win32/XComEW.exe"
         self.exe.parent.mkdir(parents=True)
-        self.exe.write_bytes(b"exe")
+        self.clean = b"MZ" + b"\0".join((
+            app.exe_patch.CURSOR_ORIGINAL, app.exe_patch.FOV_ORIGINAL,
+            app.exe_patch.EXCLUSIONS_ORIGINAL)) + b"other mod"
+        self.exe.write_bytes(self.clean)
         self.upk = self.root / "XEW/XComGame/CookedPCConsole/XComGame.upk"
         self.upk.parent.mkdir(parents=True)
         self.upk.write_bytes(b"original")
@@ -26,112 +29,144 @@ class UpkWorkflowTests(unittest.TestCase):
         mock = patch.object(app, "app_folder", return_value=self.root)
         mock.start()
         self.addCleanup(mock.stop)
-        app.save_state(self.exe, {"version": 2, "components": {
-            "exe": {"path": str(self.exe), "patched_sha256": app.digest(self.exe)}}})
+        self.bak = self.exe.with_name("XComEW.exe.bak")
+        self.script = self.root / "backups/Fix-ultrawide-Tactical.uninstall.txt"
 
-    def test_executable_only_preserves_upk_and_its_state(self):
-        upk_record = {"patched_sha256": "previous installation", "uninstall": "saved script"}
-        app.save_state(self.exe, {"version": 2, "components": {"upk": upk_record}})
+    def install_both(self):
+        with patch.object(app, "stage_upk", return_value=(b"patched upk", b"generated undo")):
+            app.install(self.root, self.root, lambda _: None)
 
-        def install_exe(path, *, dry_run, show_hash, backup_path=None):
-            if not dry_run:
-                backup_path.write_bytes(path.read_bytes())
-                path.write_bytes(b"patched exe")
-            return 0
+    def test_install_restore_deletes_flat_script_preserves_exe_edits(self):
+        self.install_both()
+        self.assertEqual(self.script.read_bytes(), b"generated undo")
+        self.assertEqual(self.bak.read_bytes(), self.clean)
+        self.assertNotIn("exe", app.load_state(self.exe)["components"])
+        self.exe.write_bytes(self.exe.read_bytes() + b"later modification")
+        with patch.object(app, "stage_upk", return_value=(b"restored upk", None)) as stage:
+            app.restore(self.root, self.root, lambda _: None)
+            stage.assert_called_once_with(self.upk, self.root, self.script, uninstall=True)
+        self.assertEqual(self.exe.read_bytes(), self.clean + b"later modification")
+        self.assertEqual(self.upk.read_bytes(), b"restored upk")
+        self.assertFalse(self.script.exists())
+        self.assertFalse(app.size_file(self.upk).exists())
+        self.assertFalse((self.root / "backups" / app.STATE).exists())
+        self.assertEqual(self.bak.read_bytes(), self.clean)
+        self.assertEqual(list((self.root / "backups").rglob("*.exe")), [])
 
-        with patch.object(app.exe_patch, "install", side_effect=install_exe), \
-                patch.object(app.exe_patch, "inspect"), \
-                patch.object(app.exe_patch, "is_fully_patched", return_value=False), \
-                patch.object(app, "stage_upk") as stage:
-            app.install_executable(self.root, None, lambda _: None)
-            stage.assert_not_called()
-        self.assertEqual(self.exe.read_bytes(), b"patched exe")
-        state = app.load_state(self.exe)["components"]
-        self.assertEqual(app.backup_file(state["exe"]["backup"]).read_bytes(), b"exe")
-        self.assertEqual(state["upk"], upk_record)
-        self.assertEqual(self.upk.read_bytes(), b"original")
-        self.assertEqual(app.size_file(self.upk).read_bytes(), b"size")
-
-    def test_executable_only_does_not_require_upk(self):
+    def test_exe_only_install_restore_without_upk_state_or_old_backup(self):
         self.upk.unlink()
+        self.bak.write_bytes(b"unrelated old backup")
         with patch.object(app, "stage_upk") as stage:
             app.install_executable(self.root, None, lambda _: None)
+            self.exe.write_bytes(self.exe.read_bytes() + b"later mod")
+            app.restore(self.root, None, lambda _: None)
             stage.assert_not_called()
+        self.assertEqual(self.exe.read_bytes(), self.clean + b"later mod")
+        self.assertEqual(self.bak.read_bytes(), b"unrelated old backup")
         self.assertFalse(self.upk.exists())
-        self.assertEqual(set(app.load_state(self.exe)["components"]), {"exe"})
 
-    def test_install_and_restore_use_saved_script(self):
-        with patch.object(app, "stage_upk", return_value=(b"patched", b"generated undo")):
-            app.install(self.root, self.root, lambda _: None)
-        self.assertFalse(app.size_file(self.upk).exists())
-        record = app.load_state(self.exe)["components"]["upk"]
-        script = self.root / record["uninstall"]
-        self.assertTrue(script.is_relative_to(self.root / "backups"))
-        self.assertEqual(script.read_bytes(), b"generated undo")
-        # Restore only UPK; the EXE is an externally managed fixture.
-        state = app.load_state(self.exe)
-        del state["components"]["exe"]
-        app.save_state(self.exe, state)
-        with patch.object(app, "stage_upk", return_value=(b"restored unpacked", None)) as stage:
-            app.restore(self.root, self.root, lambda _: None)
-            stage.assert_called_once_with(self.upk, self.root, script, uninstall=True)
-        self.assertFalse(app.size_file(self.upk).exists())
-        self.assertEqual(self.upk.read_bytes(), b"restored unpacked")
+    def test_restore_without_existing_backup(self):
+        app.install_executable(self.root, None, lambda _: None)
+        self.bak.unlink()
+        patched = self.exe.read_bytes()
+        app.restore(self.root, None, lambda _: None)
+        self.assertEqual(self.exe.read_bytes(), self.clean)
+        self.assertEqual(self.bak.read_bytes(), patched)
 
-    def test_failed_commit_restores_upk_and_sidecar(self):
+    def test_stale_exe_hash_is_ignored(self):
+        app.save_state(self.exe, {"version": 2, "components": {
+            "exe": {"patched_sha256": "old hash", "backup": "missing"}}})
+        app.install_executable(self.root, None, lambda _: None)
+        app.restore(self.root, None, lambda _: None)
+        self.assertEqual(self.exe.read_bytes(), self.clean)
+
+    def test_failed_install_rolls_back_files_and_sidecar(self):
         real_save = app.save_state
-        calls = 0
-
+        calls = []
         def fail_once(*args):
-            nonlocal calls
-            calls += 1
-            if calls == 1:
+            calls.append(True)
+            if len(calls) == 1:
                 raise OSError("state write failed")
-            return real_save(*args)
-
-        with patch.object(app, "stage_upk", return_value=(b"patched", b"undo")), \
-                patch.object(app, "save_state", side_effect=fail_once):
-            with self.assertRaises(OSError):
-                app.install(self.root, self.root, lambda _: None)
+            real_save(*args)
+        with patch.object(app, "save_state", side_effect=fail_once):
+            with self.assertRaisesRegex(OSError, "state write failed"):
+                self.install_both()
+        self.assertEqual(self.exe.read_bytes(), self.clean)
         self.assertEqual(self.upk.read_bytes(), b"original")
         self.assertEqual(app.size_file(self.upk).read_bytes(), b"size")
-        self.assertEqual(list((self.root / "mods").glob("*.uninstall.txt")), [])
-        self.assertEqual(list((self.root / "backups").rglob("*.uninstall.txt")), [])
+        self.assertFalse(self.script.exists())
+        self.assertEqual(self.bak.read_bytes(), self.clean)
 
-    def test_exe_and_uninstall_share_local_backup_directory(self):
-        app.save_state(self.exe, {"version": 2, "components": {}})
+    def test_failed_restore_keeps_script_and_rolls_back_exe(self):
+        self.install_both()
+        patched = self.exe.read_bytes()
+        real_write = app.write_atomic
+        def fail_upk(path, data):
+            if path == self.upk and data == b"restored upk":
+                raise OSError("write failed")
+            real_write(path, data)
+        with patch.object(app, "stage_upk", return_value=(b"restored upk", None)), \
+                patch.object(app, "write_atomic", side_effect=fail_upk):
+            with self.assertRaisesRegex(OSError, "write failed"):
+                app.restore(self.root, self.root, lambda _: None)
+        self.assertEqual(self.exe.read_bytes(), patched)
+        self.assertEqual(self.upk.read_bytes(), b"patched upk")
+        self.assertEqual(self.script.read_bytes(), b"generated undo")
+        self.assertIn("upk", app.load_state(self.exe)["components"])
 
-        def install_exe(path, *, dry_run, show_hash, backup_path=None):
-            if not dry_run:
-                backup_path.write_bytes(path.read_bytes())
-                path.write_bytes(b"patched exe")
-            return 0
+    def test_failed_staging_keeps_game_and_uninstall(self):
+        self.install_both()
+        patched = self.exe.read_bytes()
+        with patch.object(app, "stage_upk", side_effect=RuntimeError("patch failed")):
+            with self.assertRaisesRegex(RuntimeError, "patch failed"):
+                app.restore(self.root, self.root, lambda _: None)
+        self.assertEqual(self.exe.read_bytes(), patched)
+        self.assertTrue(self.script.exists())
 
-        def restore_exe(path, backup, *, dry_run):
-            path.write_bytes(Path(backup).read_bytes())
-            return 0
+    def test_failed_script_cleanup_rolls_back_restore(self):
+        self.install_both()
+        patched = self.exe.read_bytes()
+        real_unlink = Path.unlink
+        def fail_script(path, *args, **kwargs):
+            if path == self.script:
+                raise OSError("cleanup failed")
+            return real_unlink(path, *args, **kwargs)
+        with patch.object(app, "stage_upk", return_value=(b"restored upk", None)), \
+                patch.object(Path, "unlink", fail_script):
+            with self.assertRaisesRegex(OSError, "cleanup failed"):
+                app.restore(self.root, self.root, lambda _: None)
+        self.assertEqual(self.exe.read_bytes(), patched)
+        self.assertEqual(self.upk.read_bytes(), b"patched upk")
+        self.assertTrue(self.script.exists())
+        self.assertIn("upk", app.load_state(self.exe)["components"])
 
-        with patch.object(app.exe_patch, "install", side_effect=install_exe), \
-                patch.object(app.exe_patch, "inspect"), \
-                patch.object(app.exe_patch, "is_fully_patched", return_value=False), \
-                patch.object(app, "stage_upk", return_value=(b"patched", b"undo")):
-            app.install(self.root, self.root, lambda _: None)
+    def test_force_restore_uses_script_without_any_exe_snapshot(self):
+        self.install_both()
+        self.bak.unlink()
+        self.upk.write_bytes(b"changed upk")
+        with patch.object(app, "stage_upk", return_value=(b"restored upk", None)):
+            with self.assertRaisesRegex(ValueError, "changed"):
+                app.restore(self.root, self.root, lambda _: None)
+            app.force_restore(self.root, self.root, lambda _: None)
+        self.assertEqual(self.exe.read_bytes(), self.clean)
+        self.assertFalse(self.script.exists())
+
+    def test_nested_state_and_scripts_are_ignored(self):
+        self.install_both()
         state = app.load_state(self.exe)
-        backup = self.root / state["components"]["exe"]["backup"]
-        script = self.root / state["components"]["upk"]["uninstall"]
-        self.assertEqual(backup.parent, script.parent)
-        self.assertEqual(script.name, "Fix-ultrawide-Tactical.uninstall.txt")
-        self.assertTrue((backup.parent / app.STATE).is_file())
-        self.assertFalse((self.exe.parent / app.STATE).exists())
-        self.assertTrue(backup.is_relative_to(self.root / "backups"))
-        self.assertEqual(backup.read_bytes(), b"exe")
-        with patch.object(app.exe_patch, "restore", side_effect=restore_exe), \
-                patch.object(app, "stage_upk", return_value=(b"original", None)):
-            app.restore(self.root, self.root, lambda _: None)
-        self.assertEqual(self.exe.read_bytes(), b"exe")
-        self.assertEqual(self.upk.read_bytes(), b"original")
-        self.assertEqual(backup.read_bytes(), b"exe")
-        self.assertEqual(script.read_bytes(), b"undo")
+        legacy = self.root / "backups/old-installation" / app.STATE
+        legacy.parent.mkdir()
+        moved = legacy.parent / self.script.name
+        self.script.rename(moved)
+        state["components"]["upk"]["uninstall"] = moved.relative_to(self.root).as_posix()
+        legacy.write_text(json.dumps(state))
+        (self.root / "backups" / app.STATE).unlink()
+        self.assertEqual(app.load_state(self.exe)["components"], {})
+        with self.assertRaises(FileNotFoundError):
+            app.latest_backup()
+        app.save_state(self.exe, {"version": 2, "components": {}})
+        self.assertTrue(moved.exists())
+        self.assertTrue(legacy.exists())
 
     def test_legacy_mods_uninstall_is_rejected(self):
         script = self.root / "mods" / "legacy.uninstall.txt"
@@ -145,7 +180,7 @@ class UpkWorkflowTests(unittest.TestCase):
             stage.assert_not_called()
 
     def test_backup_paths_outside_local_directory_are_rejected(self):
-        for recorded in (str(self.exe), "mods/undo.txt", "backups/../undo.txt"):
+        for recorded in (str(self.exe), "mods/undo.txt", "backups/../undo.txt", "backups/old-installation/undo.txt"):
             with self.subTest(recorded=recorded):
                 with self.assertRaisesRegex(ValueError, "backups directory"):
                     app.backup_file(recorded)
@@ -163,94 +198,6 @@ class UpkWorkflowTests(unittest.TestCase):
             result = app.stage_upk(self.upk, self.root, app.patch_script())
         self.assertEqual(result, (b"patched", b"generated"))
         self.assertEqual(self.upk.read_bytes(), b"original")
-
-    def make_force_backup(self, name, timestamp):
-        directory = self.root / "backups" / name
-        directory.mkdir(parents=True, exist_ok=True)
-        for filename, data in (("XComEW.exe", b"original exe"), ("Fix-ultrawide-Tactical.uninstall.txt", b"undo")):
-            path = directory / filename
-            path.write_bytes(data)
-            os.utime(path, (timestamp, timestamp))
-        return directory
-
-    def test_force_selects_latest_complete_backup_without_state(self):
-        self.make_force_backup("older", 100)
-        newest = self.make_force_backup("newer", 200)
-        incomplete = self.make_force_backup("incomplete", 300)
-        (incomplete / "XComEW.exe").unlink()
-        self.assertEqual(app.latest_backup(), newest)
-        with patch.object(app, "stage_upk", return_value=(b"restored upk", None)) as stage:
-            app.force_restore(self.root, self.root, lambda _: None)
-            self.assertEqual(stage.call_args.args[2].parent, newest)
-        self.assertEqual(self.exe.read_bytes(), b"original exe")
-        self.assertEqual(self.upk.read_bytes(), b"restored upk")
-        self.assertTrue((newest / "XComEW.exe").exists())
-        self.assertFalse((app.backup_directory(self.exe) / app.STATE).exists())
-
-    def test_force_staging_failure_does_not_change_game(self):
-        self.make_force_backup("newest", 200)
-        with patch.object(app, "stage_upk", side_effect=RuntimeError("patch failed")):
-            with self.assertRaisesRegex(RuntimeError, "patch failed"):
-                app.force_restore(self.root, self.root, lambda _: None)
-        self.assertEqual(self.exe.read_bytes(), b"exe")
-        self.assertEqual(self.upk.read_bytes(), b"original")
-
-    def test_force_write_failure_rolls_back_both_files(self):
-        self.make_force_backup("newest", 200)
-        real_write = app.write_atomic
-        def fail_upk(path, data):
-            if path == self.upk and data == b"restored upk":
-                raise OSError("write failed")
-            real_write(path, data)
-        with patch.object(app, "stage_upk", return_value=(b"restored upk", None)), \
-                patch.object(app, "write_atomic", side_effect=fail_upk):
-            with self.assertRaisesRegex(OSError, "write failed"):
-                app.force_restore(self.root, self.root, lambda _: None)
-        self.assertEqual(self.exe.read_bytes(), b"exe")
-        self.assertEqual(self.upk.read_bytes(), b"original")
-        self.assertEqual(app.size_file(self.upk).read_bytes(), b"size")
-
-    def test_force_rejects_changed_backup(self):
-        directory = self.make_force_backup("newest", 200)
-        (directory / app.STATE).write_text('{"components":{"exe":{"original_sha256":"wrong"}}}')
-        with patch.object(app, "stage_upk") as stage:
-            with self.assertRaisesRegex(ValueError, "Backup file changed"):
-                app.force_restore(self.root, self.root, lambda _: None)
-            stage.assert_not_called()
-
-    def test_force_requires_complete_backup(self):
-        with self.assertRaisesRegex(FileNotFoundError, "No complete backup"):
-            app.latest_backup()
-
-    def test_matching_backup_replacement_and_failure_recovery(self):
-        app.save_state(self.exe, {"version": 2, "components": {}})
-        backup = app.backup_directory(self.exe) / self.exe.name
-        backup.write_bytes(b"exe")
-        undo = backup.parent / "Fix-ultrawide-Tactical.uninstall.txt"
-        undo.write_bytes(b"old undo")
-        def install_exe(path, *, dry_run, show_hash, backup_path=None):
-            if not dry_run:
-                self.assertFalse(backup_path.exists())
-                backup_path.write_bytes(path.read_bytes())
-                path.write_bytes(b"patched exe")
-                raise RuntimeError("commit failed")
-            return 0
-        with patch.object(app.exe_patch, "install", side_effect=install_exe), \
-                patch.object(app.exe_patch, "inspect"), \
-                patch.object(app.exe_patch, "is_fully_patched", return_value=False), \
-                patch.object(app, "stage_upk", return_value=(b"patched upk", b"new undo")):
-            with self.assertRaises(FileExistsError):
-                app.install(self.root, self.root, lambda _: None)
-            with self.assertRaisesRegex(RuntimeError, "commit failed"):
-                app.install(self.root, self.root, lambda _: None, replace_backup=True)
-            self.assertEqual(backup.read_bytes(), b"exe")
-            self.assertEqual(undo.read_bytes(), b"old undo")
-            self.assertEqual(self.exe.read_bytes(), b"exe")
-            backup.write_bytes(b"different")
-            with self.assertRaisesRegex(ValueError, "different hash"):
-                app.install(self.root, self.root, lambda _: None, replace_backup=True)
-            self.assertEqual(backup.read_bytes(), b"different")
-            self.assertEqual(undo.read_bytes(), b"old undo")
 
 
 if __name__ == "__main__":

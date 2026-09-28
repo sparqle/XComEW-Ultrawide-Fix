@@ -65,8 +65,7 @@ def locations(base: Path) -> tuple[Path, Path]:
 
 
 def backup_directory(exe: Path) -> Path:
-    installation = hashlib.sha256(str(exe.resolve()).casefold().encode("utf-8")).hexdigest()[:16]
-    return app_folder() / "backups" / installation
+    return app_folder() / "backups"
 
 
 def load_state(exe: Path) -> dict:
@@ -74,7 +73,7 @@ def load_state(exe: Path) -> dict:
     if not path.exists():
         return {"version": 2, "components": {}}
     obj = json.loads(path.read_text(encoding="utf-8"))
-    if obj.get("version") not in (1, 2) or not isinstance(obj.get("components"), dict):
+    if obj.get("version") != 2 or not isinstance(obj.get("components"), dict):
         raise ValueError("Unrecognized ultrawide fix state file; no changes made.")
     return obj
 
@@ -84,8 +83,14 @@ def save_state(exe: Path, state: dict) -> None:
     if state["components"]:
         path.parent.mkdir(parents=True, exist_ok=True)
         write_atomic(path, (json.dumps(state, indent=2) + "\n").encode())
-    elif path.exists():
-        path.unlink()
+    else:
+        path.unlink(missing_ok=True)
+
+
+def uninstall_script(exe: Path) -> Path:
+    record = load_state(exe)["components"].get("upk", {})
+    recorded = record.get("uninstall")
+    return backup_file(recorded) if recorded else backup_directory(exe) / Path(SCRIPT).with_suffix(".uninstall.txt").name
 
 
 def tool(name: str, folder: Path) -> Path:
@@ -116,8 +121,8 @@ def patch_script() -> Path:
 
 def backup_file(recorded: str) -> Path:
     path = (app_folder() / recorded).resolve()
-    if not path.is_relative_to((app_folder() / "backups").resolve()):
-        raise ValueError("Recorded backup must be in the application's backups directory.")
+    if path.parent != (app_folder() / "backups").resolve():
+        raise ValueError("Recorded backup must be directly in the application's backups directory.")
     return path
 
 
@@ -172,253 +177,162 @@ def stage_upk(upk: Path, folder: Path, script: Path, *, uninstall: bool = False)
         return unpacked.read_bytes(), undo
 
 
-def install_executable(base: Path, folder: Path | None, log, *, replace_backup: bool = False) -> None:
-    install(base, folder, log, replace_backup=replace_backup, executable_only=True)
+def install_executable(base: Path, folder: Path | None, log) -> None:
+    install(base, folder, log, executable_only=True)
 
 
-def install(base: Path, folder: Path | None, log, *, replace_backup: bool = False,
-            executable_only: bool = False) -> None:
-    log('--- Installing executable only... ---' if executable_only else '--- Installing... ---')
-    exe, upk = (executable_location(base), None) if executable_only else locations(base)
-    state = load_state(exe)
-    targets = [("exe", exe)] if executable_only else [("exe", exe), ("upk", upk)]
-    for key, target in targets:
-        record = state["components"].get(key)
-        if record:
-            if digest(target) != record["patched_sha256"]:
-                raise ValueError(f"{target.name} changed since installation; refusing to overwrite it.")
-            log(f"{target.name}: already installed")
-    pending = [(key, path) for key, path in targets if key not in state["components"]]
-    if not pending:
+def install(base: Path, folder: Path | None, log, *, executable_only: bool = False) -> None:
+    log("--- Installing executable only... ---" if executable_only else "--- Installing... ---")
+    exe = executable_location(base)
+    check_result(exe_patch.install(exe, dry_run=True, show_hash=False))
+    if executable_only:
+        check_result(exe_patch.install(exe, dry_run=False, show_hash=False))
+        log("Ultrawide EXE patch installed.")
         return
-    # Prepare and validate all selected changes before writing any game file.
-    payloads = {}
-    uninstall_data = None
-    for key, target in pending:
-        log(f"Preparing {target.name}...")
-        if key == "exe":
-            check_result(exe_patch.install(target, dry_run=True, show_hash=False))
+    state = load_state(exe)
+    previous_state = json.loads(json.dumps(state))
+    upk = None
+    payload = undo = None
+    script = backup_directory(exe) / Path(SCRIPT).with_suffix(".uninstall.txt").name
+    if not executable_only:
+        _, upk = locations(base)
+        record = state["components"].get("upk")
+        if record:
+            if Path(record["path"]) != upk or digest(upk) != record["patched_sha256"]:
+                raise ValueError("XComGame.upk changed since installation; refusing to overwrite it.")
+            log("XComGame.upk: already installed")
         else:
-            payloads[key], uninstall_data = stage_upk(target, folder, patch_script())
-    # The patcher also recognizes installations made outside this UI.
-    if any(key == "exe" for key, _ in pending) and exe_patch.is_fully_patched(exe_patch.inspect(exe)):
-        pending = [(key, path) for key, path in pending if key != "exe"]
-    originals = {key: target.read_bytes() for key, target in pending}
-    written = []
-    backup_dir = backup_directory(exe)
-    exe_backup = backup_dir / exe.name
-    previous_backup = None
-    if "exe" in originals and exe_backup.exists():
-        if not replace_backup:
-            raise FileExistsError(f"EXE backup already exists: {exe_backup}")
-        previous_backup = exe_backup.read_bytes()
-        if previous_backup != originals["exe"]:
-            raise ValueError("Existing EXE backup has a different hash; refusing to replace it.")
-    backup_created = False
-    sidecar_data = size_file(upk).read_bytes() if "upk" in originals and size_file(upk).exists() else None
-    uninstall_path = None
-    previous_uninstall = None
+            if script.exists():
+                raise FileExistsError(f"UPK uninstall script already exists: {script}. Restore before reinstalling.")
+            payload, undo = stage_upk(upk, folder, patch_script())
+    original_exe = exe.read_bytes()
+    original_upk = upk.read_bytes() if payload is not None else None
+    sidecar = size_file(upk).read_bytes() if payload is not None and size_file(upk).exists() else None
+    written_upk = created_script = False
     try:
-        backup_dir.mkdir(parents=True, exist_ok=True)
-        if uninstall_data is not None:
-            uninstall_path = backup_dir / Path(SCRIPT).with_suffix(".uninstall.txt").name
-            previous_uninstall = uninstall_path.read_bytes() if uninstall_path.exists() else None
-            write_atomic(uninstall_path, uninstall_data)
-        if "exe" in originals:
-            if previous_backup is not None:
-                exe_backup.unlink()
-            backup_created = True
-        for key, target in pending:
-            original_hash = hashlib.sha256(originals[key]).hexdigest()
-            written.append((key, target))
-            if key == "exe":
-                check_result(exe_patch.install(target, dry_run=False, show_hash=False, backup_path=exe_backup))
-            else:
-                write_atomic(target, payloads[key])
-                size_file(target).unlink(missing_ok=True)
-            patched_hash = digest(target)
-            if key != "exe" and patched_hash != hashlib.sha256(payloads[key]).hexdigest():
-                raise RuntimeError("Installed file verification failed.")
-            state["components"][key] = {"path": str(target),
-                                         "original_sha256": original_hash, "patched_sha256": patched_hash}
-            if key == "exe":
-                state["components"][key]["backup"] = exe_backup.relative_to(app_folder()).as_posix()
-            else:
-                state["components"][key]["uninstall"] = uninstall_path.relative_to(app_folder()).as_posix()
-                state["components"][key]["uninstall_sha256"] = digest(uninstall_path)
+        if undo is not None:
+            script.parent.mkdir(parents=True, exist_ok=True)
+            created_script = True
+            write_atomic(script, undo)
+        check_result(exe_patch.install(exe, dry_run=False, show_hash=False))
+        state["components"].pop("exe", None)
+        if payload is not None:
+            written_upk = True
+            write_atomic(upk, payload)
+            size_file(upk).unlink(missing_ok=True)
+            if upk.read_bytes() != payload:
+                raise RuntimeError("Installed UPK verification failed.")
+            state["components"]["upk"] = {
+                "path": str(upk), "patched_sha256": digest(upk),
+                "uninstall": script.relative_to(app_folder()).as_posix(),
+                "uninstall_sha256": digest(script),
+            }
+        if state != previous_state:
             save_state(exe, state)
-            log(f"Installed {target.name}")
     except Exception:
-        for key, target in reversed(written):
-            write_atomic(target, originals[key])
-            if key == "upk":
-                restore_size_file(target, sidecar_data)
-            state["components"].pop(key, None)
-        save_state(exe, state)
-        if backup_created and exe_backup.exists():
-            exe_backup.unlink()
-        if previous_backup is not None:
-            write_atomic(exe_backup, previous_backup)
-        if uninstall_path is not None:
-            if previous_uninstall is None:
-                uninstall_path.unlink(missing_ok=True)
-            else:
-                write_atomic(uninstall_path, previous_uninstall)
+        if exe.read_bytes() != original_exe:
+            write_atomic(exe, original_exe)
+        if written_upk:
+            write_atomic(upk, original_upk)
+            restore_size_file(upk, sidecar)
+        if created_script:
+            script.unlink(missing_ok=True)
+        if state != previous_state:
+            save_state(exe, previous_state)
         raise
+    log("Ultrawide EXE patch installed.")
+    if payload is not None:
+        log("Installed XComGame.upk")
 
 
 def disable_phone_home(base: Path, folder: Path | None, log) -> None:
     log("--- Disabling phone home... ---")
     exe = executable_location(base)
     original = exe.read_bytes()
-    original_hash = hashlib.sha256(original).hexdigest()
-    state = load_state(exe)
-    record = state["components"].get("exe")
-    if record and (Path(record["path"]) != exe or record["patched_sha256"] != original_hash):
-        raise ValueError("XComEW.exe changed since installation; refusing to overwrite it.")
     patched = exe_patch.disable_phone_home(original)
     if patched == original:
         log(f"Phone home already disabled: {exe_patch.PHONE_HOME_DISABLED}")
         return
-    backup = backup_directory(exe) / f"XComEW.phone-home-{original_hash}.exe"
-    backup.parent.mkdir(parents=True, exist_ok=True)
-    if backup.exists():
-        if digest(backup) != original_hash:
-            raise ValueError(f"Phone home backup changed: {backup}")
-    else:
-        exe_patch.make_backup(exe, backup)
-    log(f"EXE backup: {backup}")
+    log(f"EXE backup: {exe_patch.make_backup(exe)}")
     try:
         write_atomic(exe, patched)
-        patched_hash = hashlib.sha256(patched).hexdigest()
-        if digest(exe) != patched_hash:
+        if exe.read_bytes() != patched:
             raise RuntimeError("Phone home patch verification failed.")
-        # Keep the managed ultrawide install restorable after this EXE edit.
-        if record:
-            record["patched_sha256"] = patched_hash
-            save_state(exe, state)
     except Exception:
         write_atomic(exe, original)
-        if record:
-            record["patched_sha256"] = original_hash
-            save_state(exe, state)
         raise
     log(f"Phone home address replaced with {exe_patch.PHONE_HOME_DISABLED}")
 
 
 def latest_backup() -> Path:
-    candidates = []
-    for directory in (app_folder() / "backups").glob("*"):
-        exe = directory / "XComEW.exe"
-        undo = directory / Path(SCRIPT).with_suffix(".uninstall.txt").name
-        if exe.is_file() and undo.is_file() and exe.stat().st_size and undo.stat().st_size:
-            backup_file(str(exe))
-            backup_file(str(undo))
-            candidates.append(directory)
-    if not candidates:
-        raise FileNotFoundError("No complete backup found in the application's backups directory.")
-    return max(candidates, key=lambda directory: (
-        max((directory / "XComEW.exe").stat().st_mtime_ns,
-            (directory / Path(SCRIPT).with_suffix(".uninstall.txt").name).stat().st_mtime_ns),
-        directory.name,
-    ))
+    root = app_folder() / "backups"
+    name = Path(SCRIPT).with_suffix(".uninstall.txt").name
+    if (root / name).is_file():
+        return root
+    raise FileNotFoundError("No UPK uninstall script found in the application's backups directory.")
 
 
 def force_restore(base: Path, folder: Path, log, *, backup: Path | None = None) -> None:
-    log('--- Force restoring... ---')
-    exe, upk = locations(base)
     source = backup if backup is not None else latest_backup()
-    original = backup_file(str(source / "XComEW.exe"))
     script = backup_file(str(source / Path(SCRIPT).with_suffix(".uninstall.txt").name))
-    # Check recorded backup hashes when available, but allow recovery without state.
-    state_path = source / STATE
-    if state_path.exists():
-        records = json.loads(state_path.read_text(encoding="utf-8"))["components"]
-        for key, path, field in (("exe", original, "original_sha256"), ("upk", script, "uninstall_sha256")):
-            expected = records.get(key, {}).get(field)
-            if expected and digest(path) != expected:
-                raise ValueError(f"Backup file changed: {path}")
-    log(f"Force restoring from {source}")
-    original_data = original.read_bytes()
-    if not original_data or not script.stat().st_size:
-        raise ValueError("Backup files must not be empty.")
-    restored_upk, _ = stage_upk(upk, folder, script, uninstall=True)
-    previous = {exe: exe.read_bytes(), upk: upk.read_bytes()}
-    sidecar = size_file(upk).read_bytes() if size_file(upk).exists() else None
-    written = []
-    try:
-        for path, payload in ((exe, original_data), (upk, restored_upk)):
-            written.append(path)
-            write_atomic(path, payload)
-            if path == upk:
-                size_file(upk).unlink(missing_ok=True)
-            if digest(path) != hashlib.sha256(payload).hexdigest():
-                raise RuntimeError(f"Restore verification failed: {path}")
-        save_state(exe, {"version": 2, "components": {}})
-    except Exception:
-        for path in reversed(written):
-            write_atomic(path, previous[path])
-        restore_size_file(upk, sidecar)
-        raise
-    log("Force restored XComEW.exe and XComGame.upk; backup files retained.")
+    restore(base, folder, log, force_script=script)
 
 
-def restore(base: Path, folder: Path, log) -> None:
-    log('--- Restoring... ---')
-    exe, upk = locations(base)
+def restore(base: Path, folder: Path | None, log, *, force_script: Path | None = None) -> None:
+    log("--- Restoring... ---")
+    exe = executable_location(base)
+    original_exe = exe.read_bytes()
+    restored_exe = exe_patch.reverse_patch(original_exe)
     state = load_state(exe)
-    selected = [("exe", exe), ("upk", upk)]
-    ready = []
-    for key, path in selected:
-        rec = state["components"].get(key)
-        if not rec:
-            log(f"{path.name}: no managed installation")
-            continue
-        if Path(rec["path"]) != path:
-            raise ValueError(f"Recorded path does not match {path}; refusing restore.")
-        if digest(path) != rec["patched_sha256"]:
-            raise ValueError(f"{path.name} changed since installation; refusing restore.")
-        ready.append((key, path, rec))
-    # Validate and prepare both restores before changing either game file.
-    payloads = {}
-    for key, path, rec in ready:
-        if key == "exe":
-            if not rec.get("backup"):
-                raise ValueError("No original EXE backup recorded; cannot restore XComEW.exe.")
-            backup = backup_file(rec["backup"])
-            if not backup.is_file() or digest(backup) != rec["original_sha256"]:
-                raise ValueError(f"Original backup missing or changed: {backup}")
-            payloads[key] = backup.read_bytes()
-        else:
-            if not rec.get("uninstall") or not rec.get("uninstall_sha256"):
-                raise ValueError("No generated uninstall script recorded for this UPK installation; restore it with the original patching tool or backup.")
-            script = backup_file(rec["uninstall"])
-            if not script.is_file() or digest(script) != rec["uninstall_sha256"]:
+    previous_state = json.loads(json.dumps(state))
+    record = state["components"].get("upk")
+    script = force_script or uninstall_script(exe)
+    upk = None
+    payload = original_upk = sidecar = None
+    if record or force_script is not None or script.exists():
+        _, upk = locations(base)
+        if record and force_script is None:
+            if Path(record["path"]) != upk or digest(upk) != record["patched_sha256"]:
+                raise ValueError("XComGame.upk changed since installation; refusing restore.")
+            expected = record.get("uninstall_sha256")
+            if expected and (not script.is_file() or digest(script) != expected):
                 raise ValueError(f"Uninstall script missing or changed: {script}")
-            payloads[key], _ = stage_upk(path, folder, script, uninstall=True)
-    done = []
-    patched_data = {key: path.read_bytes() for key, path, _ in ready}
-    sidecar_data = size_file(upk).read_bytes() if "upk" in patched_data and size_file(upk).exists() else None
+        if not script.is_file() or not script.stat().st_size:
+            raise ValueError(f"UPK uninstall script missing or empty: {script}")
+        payload, _ = stage_upk(upk, folder, script, uninstall=True)
+        original_upk = upk.read_bytes()
+        sidecar = size_file(upk).read_bytes() if size_file(upk).exists() else None
+    if restored_exe != original_exe:
+        exe_patch.make_backup(exe)
+    written_exe = written_upk = False
     try:
-        for key, path, rec in ready:
-            done.append((key, path))
-            if key == "exe":
-                check_result(exe_patch.restore(path, backup_file(rec["backup"]), dry_run=False))
-            else:
-                write_atomic(path, payloads[key])
-                size_file(path).unlink(missing_ok=True)
-            if digest(path) != hashlib.sha256(payloads[key]).hexdigest():
-                raise RuntimeError(f"Restore verification failed: {path}")
-    except Exception:
-        for key, path in reversed(done):
-            write_atomic(path, patched_data[key])
-            if key == "upk":
-                restore_size_file(path, sidecar_data)
-        raise
-    for key, path in done:
-        del state["components"][key]
+        if restored_exe != original_exe:
+            written_exe = True
+            write_atomic(exe, restored_exe)
+            if exe.read_bytes() != restored_exe:
+                raise RuntimeError("EXE reverse patch verification failed.")
+        if payload is not None:
+            written_upk = True
+            write_atomic(upk, payload)
+            size_file(upk).unlink(missing_ok=True)
+            if upk.read_bytes() != payload:
+                raise RuntimeError("UPK restore verification failed.")
+        state["components"].pop("exe", None)
+        state["components"].pop("upk", None)
         save_state(exe, state)
-        log(f"Restored {path.name}")
+        if payload is not None:
+            script.unlink()
+    except Exception:
+        if written_exe:
+            write_atomic(exe, original_exe)
+        if written_upk:
+            write_atomic(upk, original_upk)
+            restore_size_file(upk, sidecar)
+        save_state(exe, previous_state)
+        raise
+    log("Ultrawide EXE patch reversed; unrelated EXE modifications retained.")
+    if payload is not None:
+        log("Restored XComGame.upk and removed its uninstall script.")
 
 
 def check_result(result: int) -> None:
@@ -552,7 +466,11 @@ class Window:
         self.save_base()
         base = Path(value)
         try:
-            folder = None if action in (install_executable, disable_phone_home) else binaries_folder(self.tools_path.get())
+            needs_tools = action not in (install_executable, disable_phone_home)
+            if action is restore:
+                exe = executable_location(base)
+                needs_tools = bool(load_state(exe)["components"].get("upk")) or uninstall_script(exe).exists()
+            folder = binaries_folder(self.tools_path.get()) if needs_tools else None
         except (OSError, ValueError) as exc:
             messagebox.showerror(APP, f"{exc}\n\nDownload PatcherGUI or UPKUtils separately and select the folder containing DecompressLZO.exe and PatchUPK.exe.")
             return
@@ -563,26 +481,13 @@ class Window:
                     "The new xcm.invalid address is reserved and cannot be registered. Close the game first.",
                     default="no"):
                 return
-        if action in (install, install_executable):
-            try:
-                exe = executable_location(base)
-                backup = backup_directory(exe) / exe.name
-                needs_backup = "exe" not in load_state(exe)["components"]
-                if needs_backup and backup.is_file() and digest(backup) == digest(exe):
-                    if not messagebox.askyesno(APP, f"An existing backup has the same SHA-256 hash as XComEW.exe.\n\n{backup}\n\nReplace this backup and continue installing?", default="no"):
-                        return
-                    install_action = action
-                    action = lambda base, folder, log: install_action(base, folder, log, replace_backup=True)
-            except Exception as exc:
-                messagebox.showerror(APP, str(exc))
-                return
         if action is force_restore:
             try:
                 backup = latest_backup()
             except Exception as exc:
                 messagebox.showerror(APP, str(exc))
                 return
-            if not messagebox.askyesno(APP, f"Force restore {base} using the newest complete backup?\n\n{backup}\n\nThis bypasses installed-file and recorded-path checks and may overwrite other modifications. The backup may be from another installation.", default="no"):
+            if not messagebox.askyesno(APP, f"Force restore {base} using the UPK uninstall script in {backup}?\n\nThis bypasses UPK hash and path checks. The EXE patch is reversed in place, preserving unrelated EXE edits.", default="no"):
                 return
             action = lambda base, folder, log: force_restore(base, folder, log, backup=backup)
         for b in self.buttons:

@@ -37,8 +37,7 @@ to their original state.
 5. Set **UPK tools folder** to the extracted PatcherGUI directory.
 4. Click **Restore** to restore.
 
-This will restore the original `XComEW.exe` that was backed up in the `backups` directory, checking whether the binary was changed in the meantime. It will also use an uninstall patch to restore the health
-bar modification in `XComGame.upk`. 
+Restore reverses the binary patch of `XComEW.exe`, and will use PatchUPK to uninstall the earlier modified `XComGame.upk`.
 
 ## Tested configurations
 
@@ -57,7 +56,8 @@ This backs up and patches `XComEW.exe`, leaving `XComGame.upk` unchanged. Patche
 the **UPK tools folder** are not required for this option; This is useful if you want to manage these patches yourself in PatcherGUI.
 
 **Advanced → Force Restore**.
-Will use the last backup and ignore any checks on whether the binary was changed in the meantime.
+Uses the saved UPK uninstall script without the UPK hash/path checks, then removes the
+script after success. It reverses the EXE patch in place, preserving unrelated EXE edits.
 
 **Advanced → Disable Phone Home**.
 Replace the executable's `firaxis.com` or PatcherGUI's `yiraxis.com` address with `xcm.invalid`. 

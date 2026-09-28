@@ -17,7 +17,8 @@ This patcher is intentionally all-or-nothing:
   * FULLY PATCHED executable -> report already patched
   * anything else -> refuse to modify
 
-Partially patched executables are not supported. Restore a clean XComEW.exe first.
+Installation requires a clean or fully patched set of ultrawide blocks.
+Restore reverses recognized blocks in place and preserves unrelated edits.
 """
 
 from __future__ import annotations
@@ -28,7 +29,6 @@ import os
 import shutil
 import sys
 import tempfile
-from datetime import datetime
 from pathlib import Path
 
 
@@ -97,7 +97,6 @@ if len(EXCLUSIONS_ORIGINAL) != len(EXCLUSIONS_PATCHED):
     raise RuntimeError("Internal error: exclusion patch sizes do not match")
 
 
-BACKUP_TAG = ".ultrawide-complete-backup-"
 PHONE_HOME_ORIGINAL = "firaxis.com"
 PHONE_HOME_LEGACY = "yiraxis.com"
 # Same UTF-16LE byte length as the original; .invalid is reserved by RFC 2606.
@@ -215,14 +214,21 @@ def resolve_exe(arg: str | None) -> Path:
     )
 
 
-def make_backup(path: Path, backup_path: Path | None = None) -> Path:
-    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup = backup_path or path.with_name(f"{path.name}{BACKUP_TAG}{stamp}")
-    if backup.exists():
-        raise FileExistsError(f"EXE backup already exists: {backup}")
-    shutil.copy2(path, backup)
-    if sha256(backup) != sha256(path):
-        raise RuntimeError("EXE backup verification failed.")
+def make_backup(path: Path) -> Path:
+    """Keep the first snapshot beside the game, never overwrite an existing .bak."""
+    backup = path.with_name(path.name + ".bak")
+    try:
+        out = backup.open("xb")
+    except FileExistsError:
+        return backup
+    try:
+        with out, path.open("rb") as source:
+            shutil.copyfileobj(source, out)
+            out.flush()
+            os.fsync(out.fileno())
+    except Exception:
+        backup.unlink(missing_ok=True)
+        raise
     return backup
 
 
@@ -276,7 +282,7 @@ def status(path: Path, show_hash: bool = False) -> int:
     return 2
 
 
-def install(path: Path, dry_run: bool, show_hash: bool, *, backup_path: Path | None = None) -> int:
+def install(path: Path, dry_run: bool, show_hash: bool) -> int:
     info = inspect(path)
 
     print(f"Executable: {path}")
@@ -329,7 +335,7 @@ def install(path: Path, dry_run: bool, show_hash: bool, *, backup_path: Path | N
         print("Dry run: all patch groups verified; no files changed.")
         return 0
 
-    backup = make_backup(path, backup_path)
+    backup = make_backup(path)
     print(f"Backup:     {backup}")
 
     try:
@@ -338,8 +344,8 @@ def install(path: Path, dry_run: bool, show_hash: bool, *, backup_path: Path | N
         if not is_fully_patched(final):
             raise RuntimeError("Post-write verification failed")
     except Exception:
-        shutil.copy2(backup, path)
-        print("Patch failed; restored the backup.", file=sys.stderr)
+        atomic_write(path, info["data"])
+        print("Patch failed; reverted this operation.", file=sys.stderr)
         raise
 
     print("Complete ultrawide patch installed successfully.")
@@ -352,34 +358,43 @@ def install(path: Path, dry_run: bool, show_hash: bool, *, backup_path: Path | N
     return 0
 
 
-def restore(path: Path, backup_arg: str | None, dry_run: bool) -> int:
-    if backup_arg:
-        backup = Path(backup_arg).expanduser().resolve()
-    else:
-        backups = sorted(
-            path.parent.glob(path.name + BACKUP_TAG + "*"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )
-        if not backups:
-            print("No complete-ultrawide backups found.", file=sys.stderr)
-            return 2
-        backup = backups[0]
+def reverse_patch(data: bytes) -> bytes:
+    """Reverse recognized ultrawide blocks, preserving all unrelated EXE edits."""
+    result = bytearray(data)
+    for name, original, patched in (
+        ("cursor", CURSOR_ORIGINAL, CURSOR_PATCHED),
+        ("FOV", FOV_ORIGINAL, FOV_PATCHED),
+        ("exclusions", EXCLUSIONS_ORIGINAL, EXCLUSIONS_PATCHED),
+    ):
+        clean = find_all(data, original)
+        changed = find_all(data, patched)
+        if len(clean) + len(changed) != 1:
+            raise ValueError(f"Unrecognized or ambiguous {name} patch block; no changes made.")
+        if changed:
+            offset = changed[0]
+            result[offset:offset + len(patched)] = original
+    return bytes(result)
 
-    if not backup.is_file():
-        print(f"Backup does not exist: {backup}", file=sys.stderr)
-        return 2
 
-    print(f"Executable:   {path}")
-    print(f"Restore from: {backup}")
-
-    if dry_run:
-        print("Dry run: no files changed.")
+def restore(path: Path, dry_run: bool = False) -> int:
+    original = path.read_bytes()
+    restored = reverse_patch(original)
+    if restored == original:
+        print("Ultrawide EXE patch is already removed.")
         return 0
-
-    shutil.copy2(backup, path)
-    print("Backup restored.")
-    return status(path)
+    if dry_run:
+        print("Dry run: reverse patch verified; no files changed.")
+        return 0
+    make_backup(path)
+    try:
+        atomic_write(path, restored)
+        if path.read_bytes() != restored:
+            raise RuntimeError("Reverse patch verification failed")
+    except Exception:
+        atomic_write(path, original)
+        raise
+    print("Ultrawide EXE patch reversed; unrelated modifications retained.")
+    return 0
 
 
 def main() -> int:
@@ -392,8 +407,7 @@ def main() -> int:
         help="Path to XComEW.exe (or its containing directory). Auto-detected when possible.",
     )
     parser.add_argument("--status", action="store_true", help="Report patch status only.")
-    parser.add_argument("--restore", action="store_true", help="Restore the newest complete-patch backup.")
-    parser.add_argument("--backup", help="Specific backup file to use with --restore.")
+    parser.add_argument("--restore", action="store_true", help="Reverse the ultrawide patch without needing a backup.")
     parser.add_argument("--dry-run", action="store_true", help="Verify patchability without writing.")
     parser.add_argument("--sha256", action="store_true", help="Display executable SHA-256.")
     args = parser.parse_args()
@@ -405,7 +419,7 @@ def main() -> int:
             return 2
 
         if args.restore:
-            return restore(path, args.backup, args.dry_run)
+            return restore(path, args.dry_run)
         if args.status:
             return status(path, args.sha256)
         return install(path, args.dry_run, args.sha256)
