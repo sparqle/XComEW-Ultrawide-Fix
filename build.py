@@ -67,18 +67,17 @@ def main() -> int:
     shutil.copy2(ROOT / "mods" / "Fix-ultrawide-Tactical.txt", mods)
     shutil.copy2(ROOT / "README.md", ROOT / "dist" / "README.md")
     shutil.copy2(ROOT / "LICENSE", ROOT / "dist" / "LICENSE")
-    shutil.copytree(ROOT / "third_party", ROOT / "dist" / "third_party", dirs_exist_ok=True)
     dist = ROOT / "dist"
     (dist / "backups").mkdir(exist_ok=True)
     archive = dist / f"{NAME}-{VERSION}.zip"
-    # Exclude ZIPs and installation-specific uninstall scripts left in mods.
+    # Exclude third-party files even when left in dist by an earlier build.
     with ZipFile(archive, "w", compression=ZIP_DEFLATED) as bundle:
         bundle.writestr("backups/", b"")
         for path in sorted(dist.rglob("*")):
             if not path.is_file():
                 continue
             relative = path.relative_to(dist)
-            if path.suffix.lower() == ".zip" and relative.parts[0] != "third_party":
+            if relative.parts[0].lower() == "third_party" or path.suffix.lower() == ".zip":
                 continue
             if relative.parts[0].lower() == "backups":
                 continue

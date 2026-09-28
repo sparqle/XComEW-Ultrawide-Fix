@@ -9,10 +9,12 @@ import subprocess
 import sys
 import tempfile
 import threading
+import webbrowser
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+from tkinter import font as tkfont
 
 import exe_patcher as exe_patch
 from game_path import find_game_directory, load_game_directory, save_game_directory
@@ -91,8 +93,15 @@ def app_folder() -> Path:
     return Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 
 
-def binaries_folder() -> Path:
-    return app_folder() / "third_party"
+def binaries_folder(value: str = "") -> Path:
+    folder = Path(value.strip()).expanduser() if value.strip() else app_folder() / "third_party"
+    for candidate in (folder, folder / "Binaries"):
+        if all((candidate / name).is_file() for name in ("DecompressLZO.exe", "PatchUPK.exe")):
+            return candidate.resolve()
+    raise FileNotFoundError(
+        f"Could not find both DecompressLZO.exe and PatchUPK.exe in {folder} "
+        f"or {folder / 'Binaries'}. Select a folder containing both tools."
+    )
 
 
 def patch_script() -> Path:
@@ -369,6 +378,8 @@ def check_result(result: int) -> None:
 
 def status(base: Path, folder: Path, log) -> None:
     log('--- Status ---')
+    for name in ("DecompressLZO", "PatchUPK"):
+        log(f"{name}.exe: available at {tool(name, folder)}")
     exe, upk = locations(base)
     check_result(exe_patch.status(exe, show_hash=True))
     record = load_state(exe)["components"].get("upk")
@@ -405,12 +416,26 @@ class Window:
         resources = Path(__file__).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
         self.root.iconbitmap(default=str(resources / "assets" / "ultrawide.ico"))
         self.root.title(f"{APP} v{VERSION}")
-        self.root.geometry("760x420")
+        self.root.geometry("760x480")
         self.base = tk.StringVar()
+        self.tools_path = tk.StringVar()
         main = ttk.Frame(self.root, padding=16)
         main.pack(fill="both", expand=True)
         ttk.Label(main, text=f"XCOM: Enemy Within - Ultrawide Fix - v{VERSION}", font=("Segoe UI", 15, "bold")).pack(anchor="w", pady=(0, 14))
         self.row(main, "XCom-Enemy-Unknown Folder", self.base, self.choose_base)
+        self.row(main, "UPK tools folder", self.tools_path, self.choose_tools)
+        ttk.Label(main, text="Select the folder containing DecompressLZO.exe and PatchUPK.exe, these are bundled with PatcherGUI or UPKUtils.").pack(anchor="w", pady=(4, 0))
+        download_line = ttk.Frame(main)
+        download_line.pack(anchor="w")
+        ttk.Label(download_line, text="Download one of these tools separately from ").pack(side="left")
+        self.link_font = tkfont.nametofont("TkDefaultFont").copy()
+        self.link_font.configure(underline=True)
+        nexus_link = ttk.Label(download_line, text="Nexusmods", foreground="#0563C1",
+                               font=self.link_font, cursor="hand2", takefocus=True)
+        nexus_link.pack(side="left")
+        for event in ("<Button-1>", "<Return>", "<space>"):
+            nexus_link.bind(event, lambda _: webbrowser.open("https://www.nexusmods.com/xcom/mods/448"))
+        ttk.Label(download_line, text=" or GitHub.").pack(side="left")
         buttons = ttk.Frame(main)
         buttons.pack(anchor="w", pady=14)
         self.buttons = []
@@ -436,6 +461,11 @@ class Window:
         if value:
             self.base.set(value)
             self.save_base()
+
+    def choose_tools(self):
+        value = filedialog.askdirectory(title="Select folder containing DecompressLZO.exe and PatchUPK.exe")
+        if value:
+            self.tools_path.set(value)
 
     def save_base(self):
         try:
@@ -463,7 +493,12 @@ class Window:
             messagebox.showerror(APP, "Could not locate XCOM. Select your XCom-Enemy-Unknown folder.")
             return
         self.save_base()
-        base, folder = Path(value), binaries_folder()
+        base = Path(value)
+        try:
+            folder = binaries_folder(self.tools_path.get())
+        except (OSError, ValueError) as exc:
+            messagebox.showerror(APP, f"{exc}\n\nDownload PatcherGUI or UPKUtils separately and select the folder containing DecompressLZO.exe and PatchUPK.exe.")
+            return
         if action is install:
             try:
                 exe, _ = locations(base)

@@ -17,9 +17,15 @@ The installer will try to find your XCOM installation folder in the usual places
 browse to your "XCom-Enemy-Unknown" directory (not the XEW directory inside it).
 
 1. Close the game.
-3. Extract entire archive into a directory.  
-4. Run `XComEW-Ultrawide-Fix.exe` and enter your `XCom-Enemy-Unknown` installation folder if needed.
-5. Click **Install** to install.
+2. Extract the entire archive into a directory.
+3. Download and extract [PatcherGUI](https://www.nexusmods.com/xcom/mods/448) separately if you haven't already. 
+4. Run `XComEW-Ultrawide-Fix.exe` 
+5. Enter your `XCom-Enemy-Unknown` installation folder if needed.
+5. Set **UPK tools folder** to the extracted PatcherGUI directory.
+6. Click **Install** to install.
+
+If **UPK tools folder** is blank, the app checks the `third_party` directory beside the executable
+(or in the repository root when running from source), then its `Binaries` subdirectory. Both executables must be together in one of these directories.
 
 It will binary patch `XComEW.exe` and use the PatchUPK from [UPKUtils](https://github.com/wghost/UPKUtils) to modify
 `XComGame.upk`.
@@ -31,7 +37,8 @@ to their original state.
 
 1. Close the game.
 2. Run `XComEW-Ultrawide-Fix.exe` and choose your `XCom-Enemy-Unknown` folder you previously installed in.
-3. Click **Restore** to restore.
+5. Set **UPK tools folder** to the extracted PatcherGUI directory.
+4. Click **Restore** to restore.
 
 This will restore the original `XComEW.exe` that was backed up in the `backups` directory, checking whether the binary was changed in the meantime. It will also use an uninstall patch to restore the health
 bar modification in `XComGame.upk`. 
@@ -118,8 +125,8 @@ longer excluded.
 ## License
 
 This project's original code and documentation are available under the [MIT license](LICENSE).
-The bundled UPKUtils executables retain their GPLv2 license. See [third-party notices](third_party/README.md)
-for the included licenses, corresponding 7.3 source snapshot, and verified binary provenance.
+UPKUtils is licensed separately under GPLv2 and is not included in the release ZIP.
+The source repository retains the tools, licenses, and corresponding source in `third_party` for local use.
 
 ## Tools used
 
