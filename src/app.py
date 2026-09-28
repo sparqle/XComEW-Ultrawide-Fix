@@ -390,6 +390,16 @@ class Window:
             messagebox.showerror(APP, f"{exc}\n\nDownload PatcherGUI or UPKUtils separately and select the folder containing DecompressLZO.exe and PatchUPK.exe.")
             return
         if action is disable_phone_home:
+            try:
+                original = executable_location(base).read_bytes()
+                if exe_patch.disable_phone_home(original) == original:
+                    self.log("--- Disabling phone home... ---")
+                    self.log(f"Phone home already disabled: {exe_patch.PHONE_HOME_DISABLED}")
+                    return
+            except (OSError, ValueError) as exc:
+                self.log(f"Error: {exc}")
+                messagebox.showerror(APP, str(exc))
+                return
             if not messagebox.askyesno(APP,
                     f"Improve disable phone home using the domain {exe_patch.PHONE_HOME_DISABLED}?\n\n"
                     f"PatcherGUI uses {exe_patch.PHONE_HOME_LEGACY}, which is now registered and is no longer a safe blocking address.\n\n"
