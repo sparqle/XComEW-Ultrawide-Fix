@@ -128,6 +128,14 @@ This function was patched from the linear algorithm:
 Additionally, FOV adjustments are now always applied. The maps `Command1`, `CIN_LoadScreen`, and `CIN_HQLoadScreen` are no
 longer excluded.
 
+### Smaller UI fixes
+
+A few UI elements were no longer positioned quite right in ultrawide resolutions, and have been adjusted to be more aesthetically pleasing:
+
+* Dialogue window popup wasn't centered.
+* The Headquarters top menu bar didn't extend all the way across.
+* The Headquarters top menu bar wasn't immediately anchored to the right.
+
 ## License
 
 This project's original code and documentation are available under the [MIT license](LICENSE).
