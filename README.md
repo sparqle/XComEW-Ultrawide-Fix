@@ -9,7 +9,8 @@ It addresses several visual and input problems at wide aspect ratios:
 - Camera is a bit too zoomed out when on missions or main screen.
 - The health bars and other hovering UI elements don't follow units.
 
-The fix modifies `XComEW.exe` for the camera and mouse/ground selection, and `XComGame.upk` for the health bars.
+The fix modifies `XComEW.exe` for the camera and mouse/ground selection, and patches several UPK files for additional UI fixes.
+
 
 ## Install
 
@@ -25,7 +26,7 @@ browse to your "XCom-Enemy-Unknown" directory (not the XEW directory inside it).
 6. Click **Install** to install.
 
 It will binary patch `XComEW.exe` and use the PatchUPK from [UPKUtils](https://github.com/wghost/UPKUtils) to modify
-`XComGame.upk`.
+various UPK.
 
 ## Restore
 
@@ -37,7 +38,7 @@ to their original state.
 5. Set **UPK tools folder** to the extracted PatcherGUI directory.
 4. Click **Restore** to restore.
 
-Restore reverses the binary patch of `XComEW.exe`, and will use PatchUPK to uninstall the earlier modified `XComGame.upk`.
+Restore reverses the binary patch of `XComEW.exe`, and will use PatchUPK to uninstall the earlier modified UPK files.
 
 ## Tested configurations
 
@@ -52,7 +53,7 @@ Tested at 3440x1440 in **XCOM: Enemy Within** and **Long War**, starting mission
 ## Advanced menu
 
 **Advanced → Install EXE only**.
-This backs up and patches `XComEW.exe`, leaving `XComGame.upk` unchanged. PatcherGUI and
+This backs up and patches `XComEW.exe`, leaving UPK files unchanged. PatcherGUI and
 the **UPK tools folder** are not required for this option; This is useful if you want to manage these patches yourself in PatcherGUI.
 
 **Advanced → Disable Phone Home**.

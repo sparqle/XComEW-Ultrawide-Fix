@@ -24,7 +24,7 @@ class UpkWorkflowTests(unittest.TestCase):
         self.upk.write_bytes(b"original")
         app.size_file(self.upk).write_bytes(b"size")
         (self.root / "mods").mkdir()
-        (self.root / "mods" / app.SCRIPT).write_bytes(b"install")
+        (self.root / "mods" / app.SCRIPT).write_bytes(b"UPK_FILE = XComGame.upk\n")
         mock = patch.object(app, "app_folder", return_value=self.root)
         mock.start()
         self.addCleanup(mock.stop)
@@ -32,18 +32,18 @@ class UpkWorkflowTests(unittest.TestCase):
         self.script = self.root / "mods/Fix-ultrawide-UI.txt.uninstall.txt"
 
     def install_both(self):
-        with patch.object(app, "stage_upk", return_value=(b"patched upk", b"generated undo")):
+        with patch.object(app, "stage_upk", return_value=({self.upk: b"patched upk"}, b"UPK_FILE = XComGame.upk\ngenerated undo")):
             app.install(self.root, self.root, lambda _: None)
 
     def test_install_restore_deletes_mods_script_preserves_exe_edits(self):
         self.install_both()
-        self.assertEqual(self.script.read_bytes(), b"generated undo")
+        self.assertEqual(self.script.read_bytes(), b"UPK_FILE = XComGame.upk\ngenerated undo")
         self.assertEqual(self.bak.read_bytes(), self.clean)
         self.assertFalse((self.root / "backups").exists())
         self.exe.write_bytes(self.exe.read_bytes() + b"later modification")
-        with patch.object(app, "stage_upk", return_value=(b"restored upk", None)) as stage:
+        with patch.object(app, "stage_upk", return_value=({self.upk: b"restored upk"}, None)) as stage:
             app.restore(self.root, self.root, lambda _: None)
-            stage.assert_called_once_with(self.upk, self.root, self.script, uninstall=True)
+            stage.assert_called_once_with([self.upk], self.root, self.script, uninstall=True)
         self.assertEqual(self.exe.read_bytes(), self.clean + b"later modification")
         self.assertEqual(self.upk.read_bytes(), b"restored upk")
         self.assertFalse(self.script.exists())
@@ -78,7 +78,7 @@ class UpkWorkflowTests(unittest.TestCase):
             app.install(self.root, None, lambda _: None)
             stage.assert_not_called()
         self.assertEqual(self.upk.read_bytes(), b"another mod")
-        self.assertEqual(self.script.read_bytes(), b"generated undo")
+        self.assertEqual(self.script.read_bytes(), b"UPK_FILE = XComGame.upk\ngenerated undo")
 
     def test_failed_install_rolls_back_files_and_sidecar(self):
         real_write = app.write_atomic
@@ -104,13 +104,13 @@ class UpkWorkflowTests(unittest.TestCase):
             if path == self.upk and data == b"restored upk":
                 raise OSError("write failed")
             real_write(path, data)
-        with patch.object(app, "stage_upk", return_value=(b"restored upk", None)), \
+        with patch.object(app, "stage_upk", return_value=({self.upk: b"restored upk"}, None)), \
                 patch.object(app, "write_atomic", side_effect=fail_upk):
             with self.assertRaisesRegex(OSError, "write failed"):
                 app.restore(self.root, self.root, lambda _: None)
         self.assertEqual(self.exe.read_bytes(), patched)
         self.assertEqual(self.upk.read_bytes(), b"patched upk")
-        self.assertEqual(self.script.read_bytes(), b"generated undo")
+        self.assertEqual(self.script.read_bytes(), b"UPK_FILE = XComGame.upk\ngenerated undo")
 
     def test_failed_staging_keeps_game_and_uninstall(self):
         self.install_both()
@@ -129,7 +129,7 @@ class UpkWorkflowTests(unittest.TestCase):
             if path == self.script:
                 raise OSError("cleanup failed")
             return real_unlink(path, *args, **kwargs)
-        with patch.object(app, "stage_upk", return_value=(b"restored upk", None)), \
+        with patch.object(app, "stage_upk", return_value=({self.upk: b"restored upk"}, None)), \
                 patch.object(Path, "unlink", fail_script):
             with self.assertRaisesRegex(OSError, "cleanup failed"):
                 app.restore(self.root, self.root, lambda _: None)
@@ -141,9 +141,9 @@ class UpkWorkflowTests(unittest.TestCase):
         self.install_both()
         self.bak.unlink()
         self.upk.write_bytes(b"changed upk")
-        with patch.object(app, "stage_upk", return_value=(b"restored upk", None)) as stage:
+        with patch.object(app, "stage_upk", return_value=({self.upk: b"restored upk"}, None)) as stage:
             app.restore(self.root, self.root, lambda _: None)
-            stage.assert_called_once_with(self.upk, self.root, self.script, uninstall=True)
+            stage.assert_called_once_with([self.upk], self.root, self.script, uninstall=True)
         self.assertEqual(self.exe.read_bytes(), self.clean)
         self.assertFalse(self.script.exists())
 
@@ -159,6 +159,81 @@ class UpkWorkflowTests(unittest.TestCase):
         self.assertIn("not installed", messages[-1])
 
 
+    def test_multiple_targets_install_restore_and_rollback(self):
+        other = self.upk.with_name("UICollection_Common_SF.upk")
+        other.write_bytes(b"other original")
+        app.size_file(other).write_bytes(b"other size")
+        script_data = b"UPK_FILE = XComGame.upk\nUPK_FILE=UICollection_Common_SF.upk\n"
+        app.patch_script().write_bytes(script_data)
+        payloads = {self.upk: b"patched upk", other: b"other patched"}
+        real_write = app.write_atomic
+
+        def fail_second(path, data):
+            real_write(path, data)
+            if path == other and data == b"other patched":
+                raise OSError("second package failed")
+
+        with patch.object(app, "stage_upk", return_value=(payloads, script_data)), \
+                patch.object(app, "write_atomic", side_effect=fail_second):
+            with self.assertRaisesRegex(OSError, "second package failed"):
+                app.install(self.root, self.root, lambda _: None)
+        self.assertEqual(self.exe.read_bytes(), self.clean)
+        self.assertEqual(self.upk.read_bytes(), b"original")
+        self.assertEqual(other.read_bytes(), b"other original")
+        self.assertEqual(app.size_file(other).read_bytes(), b"other size")
+        self.assertFalse(self.script.exists())
+        with patch.object(app, "stage_upk", return_value=(payloads, script_data)) as stage:
+            app.install(self.root, self.root, lambda _: None)
+            stage.assert_called_once_with([self.upk, other], self.root, app.patch_script())
+        self.assertEqual(other.read_bytes(), b"other patched")
+        self.assertFalse(app.size_file(other).exists())
+        with patch.object(app, "stage_upk", return_value=({self.upk: b"original", other: b"other original"}, None)):
+            app.restore(self.root, self.root, lambda _: None)
+        self.assertEqual(other.read_bytes(), b"other original")
+        self.assertFalse(self.script.exists())
+
+    def test_bundled_script_resolves_all_four_targets(self):
+        names = ["XComGame.upk", "UICollection_Common_SF.upk",
+                 "UICollection_Strategy_SF.upk", "XComStrategyGame.upk"]
+        for name in names[1:]:
+            self.upk.with_name(name).write_bytes(b"original")
+        bundled = Path(__file__).resolve().parents[1] / "mods" / app.SCRIPT
+        _, targets = app.locations(self.root, bundled)
+        self.assertEqual([target.name for target in targets], names)
+
+    def test_missing_target_leaves_game_untouched(self):
+        app.patch_script().write_bytes(b"UPK_FILE=Missing.upk\n")
+        with patch.object(app, "stage_upk") as stage:
+            with self.assertRaisesRegex(FileNotFoundError, "Missing.upk"):
+                app.install(self.root, self.root, lambda _: None)
+            stage.assert_not_called()
+        self.assertEqual(self.exe.read_bytes(), self.clean)
+
+    def test_stage_multiple_targets_together(self):
+        other = self.upk.with_name("XComStrategyGame.upk")
+        other.write_bytes(b"already unpacked")
+        calls = []
+
+        def fake_tool(args, cwd):
+            calls.append(args[0])
+            if args[0] == "DecompressLZO":
+                if Path(args[1]) == other:
+                    raise RuntimeError("Package is already decompressed!")
+                Path(args[2]).write_bytes(b"unpacked")
+            else:
+                for upk in (self.upk, other):
+                    self.assertTrue((cwd / upk.name).is_file())
+                    (cwd / upk.name).write_bytes(b"patched " + upk.name.encode())
+                Path(args[1] + ".uninstall.txt").write_bytes(b"undo")
+
+        with patch.object(app, "tool", side_effect=lambda name, folder: name), \
+                patch.object(app, "run_tool", side_effect=fake_tool):
+            payloads, undo = app.stage_upk([self.upk, other], self.root, app.patch_script())
+        self.assertEqual(set(payloads), {self.upk, other})
+        self.assertEqual(undo, b"undo")
+        self.assertEqual(calls, ["DecompressLZO", "DecompressLZO", "PatchUPK"])
+        self.assertEqual(other.read_bytes(), b"already unpacked")
+
     def test_stage_captures_generated_uninstall(self):
         def fake_tool(args, cwd):
             if args[0] == "DecompressLZO":
@@ -169,8 +244,8 @@ class UpkWorkflowTests(unittest.TestCase):
 
         with patch.object(app, "tool", side_effect=lambda name, folder: name), \
                 patch.object(app, "run_tool", side_effect=fake_tool):
-            result = app.stage_upk(self.upk, self.root, app.patch_script())
-        self.assertEqual(result, (b"patched", b"generated"))
+            result = app.stage_upk([self.upk], self.root, app.patch_script())
+        self.assertEqual(result, ({self.upk: b"patched"}, b"generated"))
         self.assertEqual(self.upk.read_bytes(), b"original")
 
 

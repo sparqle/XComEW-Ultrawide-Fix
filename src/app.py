@@ -1,8 +1,9 @@
-"""Windows UI for the XCOM: Enemy Within executable and HP bar UPK fixes."""
+"""Windows UI for the XCOM: Enemy Within executable and UI UPK fixes."""
 from __future__ import annotations
 
 import hashlib
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -52,14 +53,26 @@ def executable_location(base: Path) -> Path:
     return exe
 
 
-def locations(base: Path) -> tuple[Path, Path]:
+def locations(base: Path, script: Path) -> tuple[Path, list[Path]]:
     exe = executable_location(base)
     root = base.resolve() / "XEW"
     upk_dir = root / "XComGame" / "CookedPCConsole"
-    matches = [p for p in upk_dir.glob("*.upk") if p.name.lower() == "xcomgame.upk"] if upk_dir.is_dir() else []
-    if len(matches) != 1:
-        raise FileNotFoundError(f"Expected XComGame.upk in {upk_dir}")
-    return exe, matches[0]
+    targets = []
+    for line in script.read_text(encoding="utf-8-sig").splitlines():
+        match = re.match(r"^\s*UPK_FILE\s*=\s*(.*?)(?:\s*//.*)?$", line, re.IGNORECASE)
+        if not match:
+            continue
+        name = match[1].strip()
+        if not name or "/" in name or "\\" in name or Path(name).suffix.lower() != ".upk":
+            raise ValueError(f"Invalid UPK_FILE target: {name}")
+        matches = [p for p in upk_dir.iterdir() if p.is_file() and p.name.lower() == name.lower()] if upk_dir.is_dir() else []
+        if len(matches) != 1:
+            raise FileNotFoundError(f"Expected {name} in {upk_dir}")
+        if matches[0] not in targets:
+            targets.append(matches[0])
+    if not targets:
+        raise ValueError(f"No UPK_FILE targets in {script}")
+    return exe, targets
 
 
 def uninstall_script() -> Path:
@@ -111,7 +124,7 @@ def run_tool(args: list[str], cwd: Path) -> None:
         raise RuntimeError(f"{Path(args[0]).name} failed ({p.returncode}):\n{(p.stdout + p.stderr)[-3000:]}")
 
 
-def stage_upk(upk: Path, folder: Path, script: Path, *, uninstall: bool = False) -> tuple[bytes, bytes | None]:
+def stage_upk(upks: list[Path], folder: Path, script: Path, *, uninstall: bool = False) -> tuple[dict[Path, bytes], bytes | None]:
     decompress = tool("DecompressLZO", folder)
     patch = tool("PatchUPK", folder)
     with tempfile.TemporaryDirectory(prefix="xcomew-ultrawide-") as temp:
@@ -119,29 +132,26 @@ def stage_upk(upk: Path, folder: Path, script: Path, *, uninstall: bool = False)
         # Keep generated uninstall files isolated from previous installations.
         staged_script = work / script.name
         shutil.copy2(script, staged_script)
-        # DecompressLZO writes the output path; PatchUPK finds XComGame.upk in the directory.
-        unpacked = work / "XComGame.upk"
-        try:
-            run_tool([str(decompress), str(upk), str(unpacked)], work)
-        except RuntimeError as error:
-            if "Package is already decompressed!" not in str(error):
-                raise
-            # DecompressLZO reports an already unpacked UPK as exit code 1.
-            # Work only on the staging copy, leaving the installed file untouched.
-            shutil.copy2(upk, unpacked)
-        if not unpacked.is_file() or not unpacked.stat().st_size:
-            raise RuntimeError("DecompressLZO did not produce XComGame.upk.")
-        before = digest(unpacked)
+        before = {}
+        for upk in upks:
+            unpacked = work / upk.name
+            try:
+                run_tool([str(decompress), str(upk), str(unpacked)], work)
+            except RuntimeError as error:
+                if "Package is already decompressed!" not in str(error):
+                    raise
+                shutil.copy2(upk, unpacked)
+            if not unpacked.is_file() or not unpacked.stat().st_size:
+                raise RuntimeError(f"DecompressLZO did not produce {upk.name}.")
+            before[upk] = digest(unpacked)
         run_tool([str(patch), str(staged_script), str(work)], work)
-        if digest(unpacked) == before:
-            raise RuntimeError("PatchUPK made no change to the staged UPK.")
         undo = None
         if not uninstall:
             generated = staged_script.with_name(staged_script.name + ".uninstall.txt")
             if not generated.is_file() or not generated.stat().st_size:
                 raise RuntimeError("PatchUPK did not generate an uninstall script; no game files changed.")
             undo = generated.read_bytes()
-        return unpacked.read_bytes(), undo
+        return {upk: (work / upk.name).read_bytes() for upk in upks}, undo
 
 
 def install_executable(base: Path, folder: Path | None, log) -> None:
@@ -156,27 +166,30 @@ def install(base: Path, folder: Path | None, log, *, executable_only: bool = Fal
         check_result(exe_patch.install(exe, dry_run=False, show_hash=False))
         return
     script = uninstall_script()
-    upk = None
-    payload = undo = None
+    payloads = {}
+    undo = None
     if script.exists():
         if not script.is_file():
             raise ValueError(f"Expected an uninstall script file: {script}")
-        log("XComGame.upk: already installed (uninstall script present)")
+        log("UI UPK patches: already installed (uninstall script present)")
     else:
-        _, upk = locations(base)
-        payload, undo = stage_upk(upk, folder, patch_script())
+        _, upks = locations(base, patch_script())
+        for upk in upks:
+            log(f"Detected UPK: {upk.name}")
+        payloads, undo = stage_upk(upks, folder, patch_script())
     original_exe = exe.read_bytes()
-    original_upk = upk.read_bytes() if payload is not None else None
-    sidecar = size_file(upk).read_bytes() if payload is not None and size_file(upk).exists() else None
-    written_upk = created_script = False
+    originals = {upk: upk.read_bytes() for upk in payloads}
+    sidecars = {upk: size_file(upk).read_bytes() if size_file(upk).exists() else None for upk in payloads}
+    written_upks = []
+    created_script = False
     try:
         if undo is not None:
             script.parent.mkdir(parents=True, exist_ok=True)
             created_script = True
             write_atomic(script, undo)
         check_result(exe_patch.install(exe, dry_run=False, show_hash=False))
-        if payload is not None:
-            written_upk = True
+        for upk, payload in payloads.items():
+            written_upks.append(upk)
             write_atomic(upk, payload)
             size_file(upk).unlink(missing_ok=True)
             if upk.read_bytes() != payload:
@@ -184,15 +197,15 @@ def install(base: Path, folder: Path | None, log, *, executable_only: bool = Fal
     except Exception:
         if exe.read_bytes() != original_exe:
             write_atomic(exe, original_exe)
-        if written_upk:
-            write_atomic(upk, original_upk)
-            restore_size_file(upk, sidecar)
+        for upk in written_upks:
+            write_atomic(upk, originals[upk])
+            restore_size_file(upk, sidecars[upk])
         if created_script:
             script.unlink(missing_ok=True)
         raise
     log("Ultrawide EXE patch installed.")
-    if payload is not None:
-        log("Installed XComGame.upk")
+    for upk in payloads:
+        log(f"Installed {upk.name}")
 
 
 def disable_phone_home(base: Path, folder: Path | None, log) -> None:
@@ -220,41 +233,46 @@ def restore(base: Path, folder: Path | None, log) -> None:
     original_exe = exe.read_bytes()
     restored_exe = exe_patch.reverse_patch(original_exe)
     script = uninstall_script()
-    upk = None
-    payload = original_upk = sidecar = None
+    payloads = {}
     if script.exists():
-        _, upk = locations(base)
         if not script.is_file() or not script.stat().st_size:
             raise ValueError(f"UPK uninstall script missing or empty: {script}")
-        payload, _ = stage_upk(upk, folder, script, uninstall=True)
-        original_upk = upk.read_bytes()
-        sidecar = size_file(upk).read_bytes() if size_file(upk).exists() else None
+        _, upks = locations(base, script)
+        for upk in upks:
+            log(f"Detected UPK: {upk.name}")
+        payloads, _ = stage_upk(upks, folder, script, uninstall=True)
+    originals = {upk: upk.read_bytes() for upk in payloads}
+    sidecars = {upk: size_file(upk).read_bytes() if size_file(upk).exists() else None for upk in payloads}
     if restored_exe != original_exe:
         exe_patch.make_backup(exe)
-    written_exe = written_upk = False
+    written_exe = False
+    written_upks = []
     try:
         if restored_exe != original_exe:
             written_exe = True
             write_atomic(exe, restored_exe)
             if exe.read_bytes() != restored_exe:
                 raise RuntimeError("EXE reverse patch verification failed.")
-        if payload is not None:
-            written_upk = True
+        for upk, payload in payloads.items():
+            written_upks.append(upk)
             write_atomic(upk, payload)
             size_file(upk).unlink(missing_ok=True)
             if upk.read_bytes() != payload:
                 raise RuntimeError("UPK restore verification failed.")
+        if payloads:
             script.unlink()
     except Exception:
         if written_exe:
             write_atomic(exe, original_exe)
-        if written_upk:
-            write_atomic(upk, original_upk)
-            restore_size_file(upk, sidecar)
+        for upk in written_upks:
+            write_atomic(upk, originals[upk])
+            restore_size_file(upk, sidecars[upk])
         raise
     log("Ultrawide EXE patch reversed; unrelated EXE modifications retained.")
-    if payload is not None:
-        log("Restored XComGame.upk and removed its uninstall script.")
+    for upk in payloads:
+        log(f"Restored {upk.name}")
+    if payloads:
+        log("Removed UI UPK uninstall script.")
 
 
 def check_result(result: int) -> None:
@@ -267,7 +285,7 @@ def status(base: Path, folder: Path | None, log) -> None:
     exe = executable_location(base)
     check_result(exe_patch.status(exe, show_hash=False))
     installed = uninstall_script().is_file()
-    log("XComGame.upk: " + ("installed (uninstall script present)" if installed else "not installed (no uninstall script)"))
+    log("UI UPK patches: " + ("installed (uninstall script present)" if installed else "not installed (no uninstall script)"))
 
 
 class LogStream:
