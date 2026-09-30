@@ -64,7 +64,7 @@ def main() -> int:
     ])
     mods = ROOT / "dist" / "mods"
     mods.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(ROOT / "mods" / "Fix-ultrawide-Tactical.txt", mods)
+    shutil.copy2(ROOT / "mods" / "Fix-ultrawide-UI.txt", mods)
     shutil.copy2(ROOT / "README.md", ROOT / "dist" / "README.md")
     shutil.copy2(ROOT / "LICENSE", ROOT / "dist" / "LICENSE")
     dist = ROOT / "dist"

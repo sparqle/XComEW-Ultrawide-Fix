@@ -20,7 +20,7 @@ from game_path import find_game_directory, load_game_directory, save_game_direct
 from version import VERSION
 
 APP = "XCOM EW Ultrawide Fix"
-SCRIPT = "Fix-ultrawide-Tactical.txt"
+SCRIPT = "Fix-ultrawide-UI.txt"
 
 
 def digest(path: Path) -> str:

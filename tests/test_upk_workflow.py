@@ -29,7 +29,7 @@ class UpkWorkflowTests(unittest.TestCase):
         mock.start()
         self.addCleanup(mock.stop)
         self.bak = self.exe.with_name("XComEW.exe.bak")
-        self.script = self.root / "mods/Fix-ultrawide-Tactical.txt.uninstall.txt"
+        self.script = self.root / "mods/Fix-ultrawide-UI.txt.uninstall.txt"
 
     def install_both(self):
         with patch.object(app, "stage_upk", return_value=(b"patched upk", b"generated undo")):
