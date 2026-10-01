@@ -215,6 +215,10 @@ std::vector<Path> package_locations(const Path& base, const Path& script)
 
     for (std::string line; std::getline(lines, line);)
     {
+        // PatchUPK writes CRLF. ECMAScript's dot does not match the leftover CR.
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
+
         std::smatch match;
         if (!std::regex_match(line, match, target))
             continue;

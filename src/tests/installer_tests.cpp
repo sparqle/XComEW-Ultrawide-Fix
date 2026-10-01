@@ -179,6 +179,28 @@ void rollback()
     require(std::filesystem::exists(f.installer.uninstall_script()), "Failed restore removed undo script");
 }
 
+void restore_windows_script()
+{
+    Fixture f;
+    f.execute(xcom::Action::install_exe);
+    // PatchUPK emits CRLF; getline consumes LF but leaves CR in each line.
+    xcom::write_file_atomic(f.installer.uninstall_script(),
+                           bytes("MOD_NAME=Ultrawide uninstall script\r\n"
+                                 "AUTHOR=PatchUPK\r\n\r\n"
+                                 "UPK_FILE=xcomgame.upk\r\n\r\n"
+                                 "OBJECT=XComVis.Tick\r\n"
+                                 "UPK_FILE=XComGame.upk\r\n"));
+    const auto targets = xcom::package_locations(f.root / "game", f.installer.uninstall_script());
+    require(targets.size() == 1 && targets.front() == f.package, "CRLF uninstall targets not recognized");
+    const auto other = xcom::read_file(f.other);
+    f.execute(xcom::Action::restore);
+    require(f.patches == 1, "Restore did not stage CRLF uninstall script");
+    require(xcom::read_file(f.exe) == f.clean, "CRLF script restore did not restore EXE");
+    require(xcom::read_file(f.package) == bytes("restored XComGame.upk"), "CRLF script package not restored");
+    require(xcom::read_file(f.other) == other, "CRLF restore modified an unrelated package");
+    require(!std::filesystem::exists(f.installer.uninstall_script()), "Successful CRLF restore retained script");
+}
+
 void validation()
 {
     Fixture f;
@@ -233,6 +255,7 @@ int main()
     {
         install_restore();
         rollback();
+        restore_windows_script();
         validation();
         std::cout << "All installer checks passed\n";
         return 0;
