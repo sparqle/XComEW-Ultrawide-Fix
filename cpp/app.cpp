@@ -24,8 +24,13 @@ enum Control
     install,
     restore,
     status,
-    advanced,
-    download
+    download,
+    install_exe,
+    phone_home,
+    about,
+    game_label,
+    tools_label,
+    log_label
 };
 
 struct Window
@@ -35,7 +40,8 @@ struct Window
     HWND tools_edit = nullptr;
     HWND output = nullptr;
     HFONT font = nullptr;
-    HFONT title_font = nullptr;
+    HWND status_bar = nullptr;
+    UINT dpi = 96;
     std::vector<HWND> controls;
     std::thread worker;
     bool busy = false;
@@ -47,8 +53,6 @@ struct Window
             worker.join();
         if (font)
             DeleteObject(font);
-        if (title_font)
-            DeleteObject(title_font);
     }
 
     HWND control(const wchar_t* type, const wchar_t* label, DWORD style, int x, int y, int width, int height,
@@ -60,6 +64,57 @@ struct Window
                             reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)), GetModuleHandleW(nullptr), nullptr);
         SendMessageW(child, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
         return child;
+    }
+
+    int pixels(int value) const
+    {
+        return MulDiv(value, dpi, 96);
+    }
+
+    void layout()
+    {
+        if (!status_bar)
+            return;
+
+        SendMessageW(status_bar, WM_SIZE, 0, 0);
+        RECT client{}, status_rect{};
+        GetClientRect(handle, &client);
+        GetWindowRect(status_bar, &status_rect);
+        const int width = MulDiv(client.right, 96, dpi);
+        const int height = MulDiv(client.bottom - (status_rect.bottom - status_rect.top), 96, dpi);
+        const auto place = [&](HWND child, int x, int y, int w, int h)
+        {
+            SetWindowPos(child, nullptr, pixels(x), pixels(y), pixels(w), pixels(h), SWP_NOZORDER | SWP_NOACTIVATE);
+        };
+
+        // Keep the path fields and log flexible; the browse/action column stays fixed.
+        for (int row = 0; row < 2; ++row)
+        {
+            const int y = 12 + row * 34;
+            place(GetDlgItem(handle, row == 0 ? game_label : tools_label), 12, y + 4, 106, 20);
+            place(row == 0 ? game_edit : tools_edit, 122, y, width - 226, 24);
+            place(GetDlgItem(handle, row == 0 ? browse_game : browse_tools), width - 96, y, 84, 24);
+        }
+
+        place(GetDlgItem(handle, log_label), 12, 84, 200, 20);
+        place(output, 12, 106, width - 120, height - 118);
+        place(GetDlgItem(handle, install), width - 96, 106, 84, 28);
+        place(GetDlgItem(handle, restore), width - 96, 144, 84, 28);
+        place(GetDlgItem(handle, status), width - 96, 182, 84, 28);
+    }
+
+    void activity(const wchar_t* message)
+    {
+        SendMessageW(status_bar, SB_SETTEXTW, 0, reinterpret_cast<LPARAM>(message));
+    }
+
+    void enable_controls(bool enabled)
+    {
+        for (const auto child : controls)
+            EnableWindow(child, enabled);
+        for (const auto id : {install_exe, phone_home, download})
+            EnableMenuItem(GetMenu(handle), id, MF_BYCOMMAND | (enabled ? MF_ENABLED : MF_GRAYED));
+        DrawMenuBar(handle);
     }
 
     static std::wstring text(HWND edit)
@@ -159,8 +214,11 @@ struct Window
             if (worker.joinable())
                 worker.join();
             busy = true;
-            for (const auto child : controls)
-                EnableWindow(child, FALSE);
+            enable_controls(false);
+            activity(action == xcom::Action::restore      ? L"Restoring..."
+                     : action == xcom::Action::status     ? L"Checking status..."
+                     : action == xcom::Action::phone_home ? L"Disabling phone home..."
+                                                          : L"Installing...");
             log(L"Working...");
             try
             {
@@ -192,8 +250,8 @@ struct Window
             catch (...)
             {
                 busy = false;
-                for (const auto child : controls)
-                    EnableWindow(child, TRUE);
+                enable_controls(true);
+                activity(L"Operation failed");
                 throw;
             }
         }
@@ -205,38 +263,58 @@ struct Window
 
     void create()
     {
-        font = CreateFontW(-16, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
-                           CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
-        title_font = CreateFontW(-23, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
-                                 CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
-        const auto title =
-            control(L"STATIC", L"XCOM: Enemy Within - Ultrawide Fix - v" XCOM_VERSION_W, 0, 16, 16, 725, 32);
-        SendMessageW(title, WM_SETFONT, reinterpret_cast<WPARAM>(title_font), TRUE);
+        const auto screen = GetDC(handle);
+        dpi = GetDeviceCaps(screen, LOGPIXELSY);
+        ReleaseDC(handle, screen);
+        NONCLIENTMETRICSW metrics{};
+        metrics.cbSize = sizeof(metrics);
+        if (SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(metrics), &metrics, 0))
+            font = CreateFontIndirectW(&metrics.lfMessageFont);
 
-        control(L"STATIC", L"XCom-Enemy-Unknown Folder", 0, 16, 67, 218, 24);
-        game_edit = control(L"EDIT", L"", ES_AUTOHSCROLL | WS_TABSTOP, 236, 62, 410, 28, game);
+        const auto menu = CreateMenu();
+        const auto advanced_menu = CreatePopupMenu();
+        AppendMenuW(advanced_menu, MF_STRING, install_exe, L"Install &EXE only");
+        AppendMenuW(advanced_menu, MF_STRING, phone_home, L"Disable &Phone Home...");
+        AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(advanced_menu), L"&Advanced");
+        const auto help_menu = CreatePopupMenu();
+        AppendMenuW(help_menu, MF_STRING, download, L"Download &PatcherGUI...");
+        AppendMenuW(help_menu, MF_SEPARATOR, 0, nullptr);
+        AppendMenuW(help_menu, MF_STRING, about, L"&About...");
+        AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(help_menu), L"&Help");
+
+        MENUINFO menu_style{};
+        menu_style.cbSize = sizeof(menu_style);
+        menu_style.fMask = MIM_BACKGROUND;
+        menu_style.hbrBack = GetSysColorBrush(COLOR_BTNFACE);
+        SetMenuInfo(menu, &menu_style);
+
+        SetMenu(handle, menu);
+
+        control(L"STATIC", L"&Game folder:", 0, 0, 0, 0, 0, game_label);
+        game_edit = control(L"EDIT", L"", ES_AUTOHSCROLL | WS_TABSTOP, 0, 0, 0, 0, game);
+        SendMessageW(game_edit, EM_SETCUEBANNER, FALSE, reinterpret_cast<LPARAM>(L"XCom-Enemy-Unknown folder"));
         controls.push_back(game_edit);
-        controls.push_back(control(L"BUTTON", L"Browse...", WS_TABSTOP, 656, 62, 88, 28, browse_game));
-        control(L"STATIC", L"UPK tools folder", 0, 16, 107, 218, 24);
-        tools_edit = control(L"EDIT", L"", ES_AUTOHSCROLL | WS_TABSTOP, 236, 102, 410, 28, tools);
+        controls.push_back(control(L"BUTTON", L"Browse...", WS_TABSTOP, 0, 0, 0, 0, browse_game));
+        control(L"STATIC", L"&UPK tools folder:", 0, 0, 0, 0, 0, tools_label);
+        tools_edit = control(L"EDIT", L"", ES_AUTOHSCROLL | WS_TABSTOP, 0, 0, 0, 0, tools);
+        SendMessageW(tools_edit, EM_SETCUEBANNER, FALSE, reinterpret_cast<LPARAM>(L"PatcherGUI or UPKUtils folder"));
         controls.push_back(tools_edit);
-        controls.push_back(control(L"BUTTON", L"Browse...", WS_TABSTOP, 656, 102, 88, 28, browse_tools));
-        control(L"STATIC", L"Select PatcherGUI or UPKUtils, containing DecompressLZO.exe and PatchUPK.exe.", 0, 16, 144,
-                725, 24);
-        controls.push_back(control(L"BUTTON", L"Download PatcherGUI", WS_TABSTOP, 16, 176, 185, 28, download));
+        controls.push_back(control(L"BUTTON", L"Browse...", WS_TABSTOP, 0, 0, 0, 0, browse_tools));
+        control(L"STATIC", L"Activity log", 0, 0, 0, 0, 0, log_label);
+        output =
+            control(L"EDIT", L"", ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_TABSTOP, 0, 0, 0, 0);
+        SendMessageW(output, EM_SETLIMITTEXT, 1024 * 1024, 0);
 
         const std::pair<const wchar_t*, int> buttons[] = {
-            {L"Install", install}, {L"Restore", restore}, {L"Status", status}, {L"Advanced", advanced}};
-        int x = 16;
+            {L"&Install", install}, {L"&Restore", restore}, {L"&Status", status}};
         for (const auto& button : buttons)
         {
-            controls.push_back(control(L"BUTTON", button.first, WS_TABSTOP, x, 220, 112, 32, button.second));
-            x += 124;
+            controls.push_back(control(L"BUTTON", button.first, WS_TABSTOP, 0, 0, 0, 0, button.second));
         }
-        output = control(L"EDIT", L"", ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL | WS_VSCROLL | WS_TABSTOP, 16, 270,
-                         728, 180);
-        SendMessageW(output, EM_SETLIMITTEXT, 1024 * 1024, 0);
+        status_bar = control(STATUSCLASSNAMEW, L"", SBARS_SIZEGRIP, 0, 0, 0, 0);
+        activity(L"Ready. Close the game before installing or restoring.");
         SetWindowTextW(game_edit, xcom::load_game_directory(installer.app_folder).c_str());
+        layout();
     }
 };
 
@@ -257,6 +335,24 @@ LRESULT CALLBACK window_proc(HWND handle, UINT message, WPARAM wparam, LPARAM lp
     case WM_CREATE:
         window->create();
         return 0;
+    case WM_SIZE:
+        window->layout();
+        return 0;
+    case WM_GETMINMAXINFO:
+    {
+        auto* limits = reinterpret_cast<MINMAXINFO*>(lparam);
+        limits->ptMinTrackSize = {window->pixels(560), window->pixels(320)};
+        return 0;
+    }
+    case WM_CTLCOLORSTATIC:
+        if (reinterpret_cast<HWND>(lparam) == window->output)
+        {
+            const auto dc = reinterpret_cast<HDC>(wparam);
+            SetTextColor(dc, GetSysColor(COLOR_WINDOWTEXT));
+            SetBkColor(dc, GetSysColor(COLOR_WINDOW));
+            return reinterpret_cast<LRESULT>(GetSysColorBrush(COLOR_WINDOW));
+        }
+        break;
     case WM_COMMAND:
         if (HIWORD(wparam) != BN_CLICKED || window->busy)
             break;
@@ -280,19 +376,20 @@ LRESULT CALLBACK window_proc(HWND handle, UINT message, WPARAM wparam, LPARAM lp
         case download:
             ShellExecuteW(handle, L"open", L"https://www.nexusmods.com/xcom/mods/448", nullptr, nullptr, SW_SHOWNORMAL);
             break;
-        case advanced:
-        {
-            const auto menu = CreatePopupMenu();
-            AppendMenuW(menu, MF_STRING, 1, L"Install EXE only");
-            AppendMenuW(menu, MF_STRING, 2, L"Disable Phone Home");
-            RECT rect{};
-            GetWindowRect(GetDlgItem(handle, advanced), &rect);
-            const auto selected = TrackPopupMenu(menu, TPM_RETURNCMD, rect.left, rect.bottom, 0, handle, nullptr);
-            DestroyMenu(menu);
-            if (selected)
-                window->start(selected == 1 ? xcom::Action::install_exe : xcom::Action::phone_home);
+        case install_exe:
+            window->start(xcom::Action::install_exe);
             break;
-        }
+        case phone_home:
+            window->start(xcom::Action::phone_home);
+            break;
+        case about:
+            MessageBoxW(handle,
+                        L"XCOM: Enemy Within Ultrawide "
+                        L"Fix\nVersion " XCOM_VERSION_W L"\n\nCamera, cursor and UI fixes for ultrawide displays.\n"
+                        L"For full installation, select a PatcherGUI or UPKUtils folder.\n\n"
+                        L"Original project code is licensed under the MIT license.",
+                        L"About XCOM EW Ultrawide Fix", MB_OK | MB_ICONINFORMATION);
+            break;
         }
         return 0;
     case log_message:
@@ -307,8 +404,8 @@ LRESULT CALLBACK window_proc(HWND handle, UINT message, WPARAM wparam, LPARAM lp
         if (window->worker.joinable())
             window->worker.join();
         window->busy = false;
-        for (const auto child : window->controls)
-            EnableWindow(child, TRUE);
+        window->enable_controls(true);
+        window->activity(error->empty() ? L"Ready. Operation completed." : L"Operation failed. See the activity log.");
         if (!error->empty())
             MessageBoxW(handle, error->c_str(), L"XCOM EW Ultrawide Fix", MB_OK | MB_ICONERROR);
         return 0;
@@ -340,7 +437,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show)
     const auto com = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     if (FAILED(com))
         return 1;
-    INITCOMMONCONTROLSEX common{sizeof(common), ICC_STANDARD_CLASSES};
+    SetProcessDPIAware();
+    INITCOMMONCONTROLSEX common{sizeof(common), ICC_STANDARD_CLASSES | ICC_BAR_CLASSES};
     InitCommonControlsEx(&common);
     int result = 1;
 
@@ -357,9 +455,12 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show)
         if (!RegisterClassW(&type))
             throw std::runtime_error("Cannot register application window");
 
-        RECT size{0, 0, 760, 470};
-        const DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
-        AdjustWindowRect(&size, style, FALSE);
+        const auto screen = GetDC(nullptr);
+        window.dpi = GetDeviceCaps(screen, LOGPIXELSY);
+        ReleaseDC(nullptr, screen);
+        RECT size{0, 0, window.pixels(680), window.pixels(400)};
+        const DWORD style = WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN;
+        AdjustWindowRect(&size, style, TRUE);
         const auto handle = CreateWindowW(type.lpszClassName, L"XCOM EW Ultrawide Fix v" XCOM_VERSION_W, style,
                                           CW_USEDEFAULT, CW_USEDEFAULT, size.right - size.left, size.bottom - size.top,
                                           nullptr, nullptr, instance, &window);

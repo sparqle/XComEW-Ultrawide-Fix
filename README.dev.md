@@ -39,6 +39,10 @@ has a five-minute timeout. Operations run on a worker thread, and closing the
 window is blocked until the transaction finishes.
 
 The GUI provides Install, Restore, Status, Install EXE only, and Disable Phone Home.
+Its compact Windows layout has two folder rows, a resizable activity log, and
+Install/Restore/Status buttons on the right. EXE-only actions are in the Advanced
+menu; the PatcherGUI download link and About dialog are in Help. Controls use the
+Windows system font and display scaling, with progress shown in a native status bar.
 It saves the game folder in the same UTF-8 `XComEW-Ultrawide-Fix.cfg` used by the
 Python app. Discovery checks the same usual Steam folders on C: and D:.
 The CLI still accepts an explicit EXE path and reports signature status without

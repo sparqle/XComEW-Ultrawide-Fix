@@ -75,7 +75,7 @@ void gui_smoke(const xcom::Path& app, const xcom::Path& cwd)
         require(search.window != nullptr, "Native application window missing");
         require(GetDlgItem(search.window, 100) != nullptr, "Game folder entry missing");
         require(GetDlgItem(search.window, 101) != nullptr, "Tools folder entry missing");
-        for (int id = 104; id <= 107; ++id)
+        for (int id = 104; id <= 106; ++id)
             require(GetDlgItem(search.window, id) != nullptr, "Operation button missing");
         PostMessageW(search.window, WM_CLOSE, 0, 0);
         require(WaitForSingleObject(process.hProcess, 10000) == WAIT_OBJECT_0, "GUI did not close cleanly");
