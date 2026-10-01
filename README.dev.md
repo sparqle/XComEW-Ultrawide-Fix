@@ -14,7 +14,7 @@ cmake --preset native-ui
 cmake --build --preset native-ui
 cmake --install build/native-ui --config Release --prefix dist
 $cpack = Join-Path (Split-Path (Get-Command cmake).Source) 'cpack.exe'
-& $cpack --config build/native-ui/CPackConfig.cmake -C Release -B dist
+& $cpack --config build/native-ui/CPackConfig.cmake -C Release
 ```
 
 The build produces `build/native-ui/XComEW-Ultrawide-Fix.exe`. Installation puts
@@ -22,6 +22,8 @@ it in `dist`, alongside `mods/Fix-ultrawide-UI.txt`, README and LICENSE. The rel
 archive is `dist/XComEW-Ultrawide-Fix-2.0.0.zip`. It contains no runtime DLLs, backups,
 local settings, uninstall scripts or third-party tools. CPack packages only
 explicitly installed files, excluding stale files from older builds.
+CPack stages packages under `build/native-ui/packages` and copies completed ZIPs
+to `dist`, keeping its `_CPack_Packages` working directory out of the release folder.
 
 In CLion, reload the CMake project and select the `native-ui` release profile and
 run configuration. This is the only default application target. Tests are opt-in;

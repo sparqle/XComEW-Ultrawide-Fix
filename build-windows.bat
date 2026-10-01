@@ -10,5 +10,5 @@ if errorlevel 1 exit /b %errorlevel%
 rem Chocolatey also provides a cpack command; use the one beside CMake.
 for %%I in (cmake.exe) do set "CMAKE_EXE=%%~$PATH:I"
 for %%I in ("%CMAKE_EXE%") do set "CPACK_EXE=%%~dpIcpack.exe"
-"%CPACK_EXE%" --config "%~dp0build\native-ui\CPackConfig.cmake" -C Release -B "%~dp0dist"
+"%CPACK_EXE%" --config "%~dp0build\native-ui\CPackConfig.cmake" -C Release
 exit /b %errorlevel%
