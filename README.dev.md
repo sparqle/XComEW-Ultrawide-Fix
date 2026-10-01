@@ -22,9 +22,11 @@ Open the root `CMakeLists.txt` in CLion to use its configured C++ toolchain.
 The GUI is `build/cpp/XComEW-Ultrawide-Fix.exe` (or inside `Release` with MSVC).
 The build copies the patch script to a `mods` directory beside the GUI, so it can
 also run directly from CLion. Installation places the same files in `dist`.
-MinGW runtime DLLs are copied beside the
-built GUI and included in the release ZIP. MSVC runtime libraries are included
-through CMake's runtime installation support.
+The GUI and CLI link the compiler runtimes statically (MinGW or MSVC `/MT`), so
+no runtime DLLs need to be distributed alongside them. They still use Windows
+system DLLs, including the Universal CRT supplied by Windows 10/11. The patch
+script remains in `mods`, and full UPK installation still uses the separately
+downloaded PatcherGUI/UPKUtils tools.
 
 `build-windows.bat` runs this native build, tests, installation, and packaging.
 The release ZIP contains only explicitly installed files, excluding local settings,
@@ -65,7 +67,8 @@ a game installation. They cover multi-package staging, unchanged-package and
 missing-undo rejection, rollback, sidecars, subset restores, settings, and EXE-only
 operations without UPK tools.
 Windows-specific tests also exercise tool argument quoting and output capture,
-and start and close a hidden GUI instance without running a game operation.
+and start and close a hidden GUI instance from a folder containing no DLLs,
+without running a game operation.
 
 ## Legacy Python application
 

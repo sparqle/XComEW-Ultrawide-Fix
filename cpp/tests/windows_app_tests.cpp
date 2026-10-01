@@ -120,7 +120,7 @@ int wmain(int argc, wchar_t** argv)
         const auto folder = xcom::application_folder();
         for (const auto& entry : std::filesystem::directory_iterator(folder))
         {
-            if (entry.path().extension() == ".dll" || entry.path().filename() == "windows_app_tests.exe" ||
+            if (entry.path().filename() == "windows_app_tests.exe" ||
                 entry.path().filename() == "XComEW-Ultrawide-Fix.exe")
                 std::filesystem::copy_file(entry.path(), workspace.root / entry.path().filename());
         }

@@ -1,7 +1,20 @@
 cmake_minimum_required(VERSION 3.20)
 project(XComEWUltrawideFix VERSION 1.2.0 LANGUAGES CXX)
 
+# Use the static MSVC runtime for both the app and the libraries it links.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
+add_library(xcom_runtime INTERFACE)
+if(MINGW)
+    target_link_options(xcom_runtime INTERFACE -static)
+    # Resolve the static C++/pthread/CRT dependency cycle as a group. The CLion
+    # toolchain's pthread library also uses Windows Universal CRT entry points.
+    target_link_libraries(xcom_runtime INTERFACE
+        "-Wl,--start-group" stdc++ mingw32 gcc gcc_eh moldname mingwex msvcrt pthread ucrt "-Wl,--end-group")
+endif()
+
 add_library(xcom_patch cpp/exe_patcher.cpp)
+target_link_libraries(xcom_patch PUBLIC xcom_runtime)
 target_include_directories(xcom_patch PUBLIC cpp)
 target_compile_features(xcom_patch PUBLIC cxx_std_17)
 if(MSVC)
@@ -42,25 +55,11 @@ if(WIN32)
     endif()
     if(MINGW)
         target_link_options(XComEW-Ultrawide-Fix PRIVATE -municode)
-        get_filename_component(mingw_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
-        file(GLOB mingw_runtime_dlls
-            "${mingw_bin}/libgcc_s_*.dll"
-            "${mingw_bin}/libstdc++-6.dll"
-            "${mingw_bin}/libwinpthread-1.dll")
-        foreach(runtime_dll IN LISTS mingw_runtime_dlls)
-            add_custom_command(TARGET XComEW-Ultrawide-Fix POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    "${runtime_dll}" "$<TARGET_FILE_DIR:XComEW-Ultrawide-Fix>")
-        endforeach()
-        install(FILES ${mingw_runtime_dlls} DESTINATION .)
     endif()
 
     install(TARGETS XComEW-Ultrawide-Fix xcomew-patcher RUNTIME DESTINATION .)
     install(FILES mods/Fix-ultrawide-UI.txt DESTINATION mods)
     install(FILES README.md LICENSE DESTINATION .)
-    if(MSVC)
-        include(InstallRequiredSystemLibraries)
-    endif()
     set(CPACK_GENERATOR ZIP)
     set(CPACK_PACKAGE_FILE_NAME "XComEW-Ultrawide-Fix-${PROJECT_VERSION}")
     set(CPACK_INCLUDE_TOPLEVEL_DIRECTORY OFF)
