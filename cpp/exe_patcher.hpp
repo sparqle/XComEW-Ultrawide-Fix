@@ -26,6 +26,7 @@ Bytes restore(const Bytes& data);
 Bytes disable_phone_home(const Bytes& data);
 
 Bytes read_file(const std::filesystem::path& path);
+void write_file_atomic(const std::filesystem::path& path, const Bytes& data);
 
 enum class Operation { install, restore, disable_phone_home };
 

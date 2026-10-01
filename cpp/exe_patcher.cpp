@@ -77,7 +77,10 @@ void atomic_write(const std::filesystem::path& path, const Bytes& data) {
         CloseHandle(file);
         if (!ok) throw std::runtime_error("Cannot flush temporary executable");
 
-        if (!ReplaceFileW(path.c_str(), temp.c_str(), nullptr, 0, nullptr, nullptr))
+        const bool replaced = std::filesystem::exists(path)
+            ? ReplaceFileW(path.c_str(), temp.c_str(), nullptr, 0, nullptr, nullptr) != 0
+            : MoveFileExW(temp.c_str(), path.c_str(), MOVEFILE_WRITE_THROUGH) != 0;
+        if (!replaced)
             throw std::runtime_error("Cannot replace executable; close the game and check permissions");
     } catch (...) {
         std::filesystem::remove(temp);
@@ -104,7 +107,8 @@ void atomic_write(const std::filesystem::path& path, const Bytes& data) {
         close(fd);
         fd = -1;
 
-        std::filesystem::permissions(temp, std::filesystem::status(path).permissions());
+        if (std::filesystem::exists(path))
+            std::filesystem::permissions(temp, std::filesystem::status(path).permissions());
         std::filesystem::rename(temp, path);
     } catch (...) {
         if (fd >= 0) close(fd);
@@ -114,6 +118,10 @@ void atomic_write(const std::filesystem::path& path, const Bytes& data) {
 #endif
 }
 
+}
+
+void write_file_atomic(const std::filesystem::path& path, const Bytes& data) {
+    atomic_write(path, data);
 }
 
 State inspect(const Bytes& data) {
