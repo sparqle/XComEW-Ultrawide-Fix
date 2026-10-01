@@ -5,14 +5,22 @@
 #include <functional>
 #include <optional>
 
-namespace xcom {
+namespace xcom
+{
 
 using Path = std::filesystem::path;
 using Log = std::function<void(const std::string&)>;
 using ToolRunner = std::function<void(const std::vector<Path>&, const Path&)>;
 using FileWriter = std::function<void(const Path&, const Bytes&)>;
 
-enum class Action { install, restore, status, install_exe, phone_home };
+enum class Action
+{
+    install,
+    restore,
+    status,
+    install_exe,
+    phone_home
+};
 
 Path executable_location(const Path& base);
 Path find_game_directory(const Path& preferred = {});
@@ -22,7 +30,8 @@ Path binaries_folder(const Path& folder);
 std::vector<Path> package_locations(const Path& base, const Path& script);
 
 // Dependencies can be replaced by tests without running tools or touching a real game.
-struct Installer {
+struct Installer
+{
     Path app_folder;
     ToolRunner run_tool;
     FileWriter write = write_file_atomic;
@@ -33,4 +42,4 @@ struct Installer {
     void execute(Action action, const Path& base, const Path& tools, const Log& log) const;
 };
 
-}
+} // namespace xcom
