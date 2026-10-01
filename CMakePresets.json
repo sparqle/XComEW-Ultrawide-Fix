@@ -1,0 +1,20 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "native-ui",
+      "displayName": "Native UI (Release)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/native-ui",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "native-ui", "configurePreset": "native-ui", "targets": ["native-ui"] }
+  ]
+}

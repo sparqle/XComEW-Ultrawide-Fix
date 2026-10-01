@@ -1,7 +1,7 @@
 #include <windows.h>
 
 1 ICON "@CMAKE_CURRENT_SOURCE_DIR@/assets/ultrawide.ico"
-1 RT_MANIFEST "@CMAKE_CURRENT_SOURCE_DIR@/cpp/app.manifest"
+1 RT_MANIFEST "@CMAKE_CURRENT_BINARY_DIR@/app.manifest"
 
 VS_VERSION_INFO VERSIONINFO
  FILEVERSION @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
@@ -14,9 +14,9 @@ BEGIN
         BLOCK "040904B0"
         BEGIN
             VALUE "FileDescription", "XCOM: Enemy Within Ultrawide Fix\0"
-            VALUE "FileVersion", "@PROJECT_VERSION@\0"
+            VALUE "FileVersion", "@XCOM_VERSION@\0"
             VALUE "ProductName", "XComEW-Ultrawide-Fix\0"
-            VALUE "ProductVersion", "@PROJECT_VERSION@\0"
+            VALUE "ProductVersion", "@XCOM_VERSION@\0"
             VALUE "OriginalFilename", "XComEW-Ultrawide-Fix.exe\0"
         END
     END

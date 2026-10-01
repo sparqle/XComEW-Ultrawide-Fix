@@ -1,4 +1,4 @@
-// Exact byte signatures ported from src/exe_patcher.py.
+// Exact instruction bytes for the supported XComEW executable.
 const std::array<Patch, 3>& patches()
 {
     static const std::array<Patch, 3> value{{
