@@ -1,5 +1,6 @@
 #include "installer.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 
@@ -45,6 +46,7 @@ struct Fixture
     unsigned patches = 0;
     bool unchanged = false;
     bool omit_undo = false;
+    std::vector<std::string> logs;
 
     Fixture()
     {
@@ -108,8 +110,9 @@ struct Fixture
     void execute(xcom::Action action)
     {
         installer.execute(action, root / "game", root / "tools",
-                          [](const std::string&)
+                          [&](const std::string& message)
                           {
+                              logs.push_back(message);
                           });
     }
 };
@@ -201,17 +204,27 @@ void restore_windows_script()
     require(!std::filesystem::exists(f.installer.uninstall_script()), "Successful CRLF restore retained script");
 }
 
-void validation()
+void unchanged_packages()
 {
     Fixture f;
     f.unchanged = true;
-    rejects(
-        [&]
-        {
-            f.execute(xcom::Action::install);
-        });
-    require(xcom::read_file(f.exe) == f.clean, "Unchanged staging wrote EXE");
-    f.unchanged = false;
+    f.execute(xcom::Action::install);
+    require(xcom::read_file(f.exe) == xcom::install(f.clean), "Unchanged packages blocked EXE installation");
+    require(xcom::read_file(f.package) == bytes("original"), "Unchanged package contents changed");
+    require(std::filesystem::exists(f.installer.uninstall_script()), "Unchanged install omitted undo script");
+    for (const auto& package : {f.package, f.other})
+    {
+        const auto message = "PatchUPK did not change " + package.filename().u8string() + "; continuing.";
+        require(std::find(f.logs.begin(), f.logs.end(), message) != f.logs.end(), "Unchanged package not logged");
+    }
+    f.execute(xcom::Action::restore);
+    require(xcom::read_file(f.exe) == f.clean, "Unchanged packages blocked EXE restore");
+    require(!std::filesystem::exists(f.installer.uninstall_script()), "Unchanged restore retained undo script");
+}
+
+void validation()
+{
+    Fixture f;
     f.omit_undo = true;
     rejects(
         [&]
@@ -256,6 +269,7 @@ int main()
         install_restore();
         rollback();
         restore_windows_script();
+        unchanged_packages();
         validation();
         std::cout << "All installer checks passed\n";
         return 0;

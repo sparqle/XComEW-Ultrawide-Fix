@@ -87,7 +87,7 @@ struct Staged
 };
 
 Staged stage(const Installer& installer, const std::vector<Path>& packages, const Path& tools, const Path& script,
-             bool uninstall)
+             bool uninstall, const Log& log)
 {
     if (!installer.run_tool)
         throw std::runtime_error("UPK tool runner unavailable");
@@ -122,8 +122,10 @@ Staged stage(const Installer& installer, const std::vector<Path>& packages, cons
     for (const auto& package : packages)
     {
         auto bytes = read_file(workspace.path / package.filename());
-        if (bytes.empty() || bytes == before.at(package))
-            throw std::runtime_error("PatchUPK did not change " + package.filename().u8string());
+        if (bytes.empty())
+            throw std::runtime_error("PatchUPK produced an empty package: " + package.filename().u8string());
+        if (bytes == before.at(package))
+            log("PatchUPK did not change " + package.filename().u8string() + "; continuing.");
         result.packages.emplace(package, std::move(bytes));
     }
 
@@ -292,7 +294,7 @@ void Installer::execute(Action action, const Path& base, const Path& tools, cons
         const auto targets = package_locations(base, source);
         for (const auto& package : targets)
             log("Detected UPK: " + package.filename().u8string());
-        staged = stage(*this, targets, tools.empty() ? app_folder / "third_party" : tools, source, restoring);
+        staged = stage(*this, targets, tools.empty() ? app_folder / "third_party" : tools, source, restoring, log);
     }
     else if (action == Action::install)
     {
