@@ -383,13 +383,31 @@ LRESULT CALLBACK window_proc(HWND handle, UINT message, WPARAM wparam, LPARAM lp
             window->start(xcom::Action::phone_home);
             break;
         case about:
-            MessageBoxW(handle,
-                        L"XCOM: Enemy Within Ultrawide "
-                        L"Fix\nVersion " XCOM_VERSION_W L"\n\nCamera, cursor and UI fixes for ultrawide displays.\n"
-                        L"For full installation, select a PatcherGUI or UPKUtils folder.\n\n"
-                        L"Original project code is licensed under the MIT license.",
-                        L"About XCOM EW Ultrawide Fix", MB_OK | MB_ICONINFORMATION);
+        {
+            TASKDIALOGCONFIG dialog{};
+            dialog.cbSize = sizeof(dialog);
+            dialog.hwndParent = handle;
+            dialog.dwFlags = TDF_ENABLE_HYPERLINKS | TDF_SIZE_TO_CONTENT;
+            dialog.dwCommonButtons = TDCBF_OK_BUTTON;
+            dialog.pszWindowTitle = L"About XCOM EW Ultrawide Fix";
+            dialog.pszMainIcon = TD_INFORMATION_ICON;
+            dialog.pszMainInstruction = L"XCOM: Enemy Within Ultrawide Fix";
+            dialog.pszContent =
+                L"Version " XCOM_VERSION_W L"\n\nCamera, cursor and UI fixes for ultrawide displays.\n"
+                L"For full installation, select a PatcherGUI or UPKUtils folder.\n\n"
+                L"Original project code is licensed under the MIT license.\n\n"
+                L"<a href=\"https://github.com/sparqle/XComEW-Ultrawide-Fix\">"
+                L"https://github.com/sparqle/XComEW-Ultrawide-Fix</a>";
+            dialog.pfCallback = [](HWND owner, UINT notification, WPARAM, LPARAM, LONG_PTR) -> HRESULT
+            {
+                if (notification == TDN_HYPERLINK_CLICKED)
+                    ShellExecuteW(owner, L"open", L"https://github.com/sparqle/XComEW-Ultrawide-Fix",
+                                  nullptr, nullptr, SW_SHOWNORMAL);
+                return S_OK;
+            };
+            TaskDialogIndirect(&dialog, nullptr, nullptr, nullptr);
             break;
+        }
         }
         return 0;
     case log_message:
