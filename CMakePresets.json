@@ -4,11 +4,12 @@
   "configurePresets": [
     {
       "name": "native-ui",
-      "displayName": "Native UI (Release)",
+      "displayName": "Native UI (MSVC Release)",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/native-ui",
+      "binaryDir": "${sourceDir}/build/native-ui-msvc",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "cl.exe",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "BUILD_TESTING": "OFF"
       }
