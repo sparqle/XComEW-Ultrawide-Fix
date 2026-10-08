@@ -8,6 +8,18 @@
 // - Fix initial position top menu bar
 // - Retains support for sub-16:9 aspect ratios.
 // - Includes special uninstall handing to allow uninstall scripts to be properly generated.
+//
+// ------------------------------------------------------------
+// Changelog 3.0.0:
+// - Rewrote executable patcher code into PatchUPK patch file
+// - Reinstated original sub-16:9 aspect ratio support
+//
+// Changelog 2.0.0:
+// - Rewrote executable patcher into C++
+// - Added UI aesthetic tweaks
+//
+// Changelog 1.1.0:
+// - Initial release
 // ------------------------------------------------------------
 
 MOD_NAME = Ultrawide UI and camera fixes
