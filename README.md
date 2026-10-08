@@ -1,12 +1,12 @@
 # XCOM: Enemy Within Ultrawide Fix
 
 > [!IMPORTANT]
-> `XComEW-Ultrawide-Fix.exe` is no longer necessary. 
+> The application `XComEW-Ultrawide-Fix.exe` is no longer necessary. 
 > The complete ultrawide fix can now be installed using [PatcherGUI](https://www.nexusmods.com/xcom/mods/448) with just the file
 > [`mods/Fix-ultrawide.txt`](mods/Fix-ultrawide.txt). 
-> 
-> Together, these replace all ultrawide modifications performed by this executable, without needing to modify `XComEW.exe`. 
-> The executable installation and restoration instructions below are retained for existing users.
+>
+> Together, these replace all ultrawide modifications performed by this executable, without needing to modify `XComEW.exe`.
+> The executable installation and restoration instructions below are retained for posterity.
 
 An ultrawide resolution fix for **XCOM: Enemy Within** and **Long War** to make it properly expand horizontally, turning it into a [Hor+](https://www.wsgf.org/article/screen-change) game.
 
