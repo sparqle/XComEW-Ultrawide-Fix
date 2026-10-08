@@ -7,7 +7,10 @@
 // - Stretch Headquarters top menu bar to full width on ultrawide resolutions
 // - Fix initial position top menu bar
 // - Retains support for sub-16:9 aspect ratios.
-// - Includes special uninstall handing to allow uninstall scripts to be properly generated.
+// - Includes special uninstall handling to allow uninstall scripts to be properly generated.
+// - Tested with EW/LW/LWR.
+//
+// Install using PatcherGUI: https://www.nexusmods.com/xcom/mods/448
 //
 // ------------------------------------------------------------
 // Changelog 3.0.0:
