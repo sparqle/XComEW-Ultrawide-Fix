@@ -1,7 +1,8 @@
 // XCOM: Enemy Within ultrawide UI fixes
 //
 // Tactical UI fixes:
-// - Fix UI to screenspace mapping on ultrawide resolutions (Healthbars)
+// - Fix UI-to-screen conversion on ultrawide resolutions (highlighted square underneath curso)
+// - Fix Screen-to-UI conversion on ultrawide resolutions (healthbars, targetting recticles)
 //
 // Strategic UI fixes:
 // - Center modal dialogue box on ultrawide resolutions
@@ -22,8 +23,8 @@ UPK_FILE = XComGame.upk
 //     ScaleFactor = UIMGR_RES_Y / ScreenHeight
 //
 // This preserves the 1280x720 UI aspect ratio and horizontally centers the UI
-// canvas on wider screens, matching the native ConvertUIPointToScreenCoordinate
-// ultrawide fix.
+// canvas on wider screens, matching the ConvertUIPointToScreenCoordinate
+// replacement below.
 //
 // Intended result:
 //   - correct mouse/UI positioning on ultrawide
@@ -46,6 +47,177 @@ OBJECT = UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords : AUTO
 /*(0x0221/0x0159)*/ 04 00 <.v2ScreenSpacePos>
 /*(0x022B/0x015F)*/ 04 3A <.ReturnValue>
 /*(0x0235/0x0165)*/ 53
+
+
+// ------------------------------------------------------------
+// Replace XComInputBase.ConvertUIPointToScreenCoordinate
+//
+// Converts the game's 1280x720 UI coordinates into screen pixel coordinates.
+//
+// Scale from screen HEIGHT and horizontally center the UI canvas, matching
+// UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords in the reverse direction:
+//
+//     ScaleFactor = ScreenHeight / 720.0
+//     ScreenX = ScreenWidth * 0.5 + (UIX - 640.0) * ScaleFactor
+//     ScreenY = UIY * ScaleFactor
+//
+// Replace the native implementation with a simulated UnrealScript function
+// and add the controller, local player, scene view, and scale locals it needs.
+// If the controller, player, or scene view is unavailable, return the input point.
+//
+// Intended result:
+//   - correct UI-to-screen coordinate mapping on ultrawide
+//   - no horizontal stretching of the virtual UI coordinate space
+//   - 16:9 behavior remains unchanged
+//
+// Apply once to the original native function. Do not also apply the standalone
+// ConvertUIPointToScreenCoordinate patch to the same package.
+// ------------------------------------------------------------
+
+UPK_FILE = XComGame.upk
+OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
+
+// Convert the native function to a defined simulated UnrealScript function.
+// Match the original footer so an already-converted function is rejected.
+FIND_CODE = <%s0> <%b0> <%u0x00020500> <ConvertUIPointToScreenCoordinate>
+[MODDED_CODE]
+<%s0> <%b0> <%u0x00020102> <ConvertUIPointToScreenCoordinate>
+
+// Add local UW_kController.
+[ADD_NAME_ENTRY]
+<%u15> <%t"UW_kController"> <%u0> <%u0x00070010>
+
+[ADD_EXPORT_ENTRY]
+<Core.ObjectProperty>
+<NullRef>
+<XComInputBase.ConvertUIPointToScreenCoordinate>
+<UW_kController>
+<NullRef>
+<%u0> <%u0x00070004>
+<%u44> <%u0>
+<%u0> <%u0>
+<%u0> <%u0> <%u0> <%u0> <%u0>
+
+OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate.UW_kController
+REL_OFFSET = 16
+[MODDED_CODE]
+<%s1> <%s0> // ArrayDim=1; ElementSize=0.
+<%u0> <%u0> // Local property flags.
+<None>
+<NullRef>
+<Class.XComPlayerController>
+
+// Add local UW_kLocalPlayer.
+[ADD_NAME_ENTRY]
+<%u16> <%t"UW_kLocalPlayer"> <%u0> <%u0x00070010>
+
+[ADD_EXPORT_ENTRY]
+<Core.ObjectProperty>
+<NullRef>
+<XComInputBase.ConvertUIPointToScreenCoordinate>
+<UW_kLocalPlayer>
+<NullRef>
+<%u0> <%u0x00070004>
+<%u44> <%u0>
+<%u0> <%u0>
+<%u0> <%u0> <%u0> <%u0> <%u0>
+
+OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate.UW_kLocalPlayer
+REL_OFFSET = 16
+[MODDED_CODE]
+<%s1> <%s0> // ArrayDim=1; ElementSize=0.
+<%u0> <%u0> // Local property flags.
+<None>
+<NullRef>
+<Class.XComLocalPlayer>
+
+// Add local UW_kSceneView.
+[ADD_NAME_ENTRY]
+<%u14> <%t"UW_kSceneView"> <%u0> <%u0x00070010>
+
+[ADD_EXPORT_ENTRY]
+<Core.ObjectProperty>
+<NullRef>
+<XComInputBase.ConvertUIPointToScreenCoordinate>
+<UW_kSceneView>
+<NullRef>
+<%u0> <%u0x00070004>
+<%u44> <%u0>
+<%u0> <%u0>
+<%u0> <%u0> <%u0> <%u0> <%u0>
+
+OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate.UW_kSceneView
+REL_OFFSET = 16
+[MODDED_CODE]
+<%s1> <%s0> // ArrayDim=1; ElementSize=0.
+<%u0> <%u0> // Local property flags.
+<None>
+<NullRef>
+<Class.ScriptSceneView>
+
+// Add local UW_Scale.
+[ADD_NAME_ENTRY]
+<%u9> <%t"UW_Scale"> <%u0> <%u0x00070010>
+
+[ADD_EXPORT_ENTRY]
+<Core.FloatProperty>
+<NullRef>
+<XComInputBase.ConvertUIPointToScreenCoordinate>
+<UW_Scale>
+<NullRef>
+<%u0> <%u0x00070004>
+<%u40> <%u0>
+<%u0> <%u0>
+<%u0> <%u0> <%u0> <%u0> <%u0>
+
+OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate.UW_Scale
+REL_OFFSET = 16
+[MODDED_CODE]
+<%s1> <%s0> // ArrayDim=1; ElementSize=0.
+<%u0> <%u0> // Local property flags.
+<None>
+<NullRef>
+
+OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
+
+[REPLACEMENT_CODE]
+// UW_kController = XComPlayerController(Engine.GetCurrentWorldInfo().GetALocalPlayerController());
+0F 00 <.UW_kController> 2E <Class.XComPlayerController> 19 12 20 <Engine.Engine> [@] <Engine.Engine.GetCurrentWorldInfo.ReturnValue> 00 ( 1C <Engine.Engine.GetCurrentWorldInfo> 16 ) [@] <Engine.Actor.GetALocalPlayerController.ReturnValue> 00 ( 1C <Engine.Actor.GetALocalPlayerController> 16 )
+
+// if (UW_kController == none) return kPoint;
+07 [@have_controller] 72 00 <.UW_kController> 2A 16
+04 00 <.kPoint>
+[#have_controller]
+
+// UW_kLocalPlayer = XComLocalPlayer(UW_kController.Player);
+0F 00 <.UW_kLocalPlayer> 2E <Class.XComLocalPlayer> 19 00 <.UW_kController> [@] <Engine.PlayerController.Player> 00 ( 01 <Engine.PlayerController.Player> )
+
+// if (UW_kLocalPlayer == none) return kPoint;
+07 [@have_player] 72 00 <.UW_kLocalPlayer> 2A 16
+04 00 <.kPoint>
+[#have_player]
+
+// UW_kSceneView = UW_kLocalPlayer.SceneView;
+0F 00 <.UW_kSceneView> 19 00 <.UW_kLocalPlayer> [@] <XComLocalPlayer.SceneView> 00 ( 01 <XComLocalPlayer.SceneView> )
+
+// if (UW_kSceneView == none) return kPoint;
+07 [@have_scene] 72 00 <.UW_kSceneView> 2A 16
+04 00 <.kPoint>
+[#have_scene]
+
+// UW_Scale = UW_kSceneView.SizeY / 720.0;
+0F 00 <.UW_Scale> AC 19 00 <.UW_kSceneView> [@] <ScriptSceneView.SizeY> 00 ( 01 <ScriptSceneView.SizeY> ) 1E <%f720.0> 16
+
+// kPoint.X = UW_kSceneView.SizeX * 0.5 + (kPoint.X - 640.0) * UW_Scale;
+0F 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.kPoint> AE AB 19 00 <.UW_kSceneView> [@] <ScriptSceneView.SizeX> 00 ( 01 <ScriptSceneView.SizeX> ) 1E <%f0.5> 16 AB AF 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.kPoint> 1E <%f640.0> 16 00 <.UW_Scale> 16 16
+
+// kPoint.Y = kPoint.Y * UW_Scale;
+0F 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.kPoint> AB 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.kPoint> 00 <.UW_Scale> 16
+
+// return kPoint;
+04 00 <.kPoint>
+04 3A <.ReturnValue>
+53
 
 
 // ------------------------------------------------------------
