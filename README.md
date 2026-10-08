@@ -16,8 +16,6 @@ It addresses several visual and input problems at wide aspect ratios:
 - Camera is a bit too zoomed out when on missions or main screen.
 - The health bars and other hovering UI elements don't follow units.
 
-The fix modifies `XComEW.exe` for the camera and mouse/ground selection, and patches several UPK files for additional UI fixes.
-
 ## Install (PatchGUI)
 
 1. Close the game.
