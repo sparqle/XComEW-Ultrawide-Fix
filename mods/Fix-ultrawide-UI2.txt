@@ -1,4 +1,7 @@
-// XCOM: Enemy Within ultrawide UI fixes
+// XCOM: Enemy Within ultrawide UI and camera fixes
+//
+// Camera fixes:
+// - Correct FOV to be Hor+ in both tactical and strategic screens
 //
 // Tactical UI fixes:
 // - Fix UI to screenspace mapping on ultrawide resolutions (Healthbars)
@@ -186,6 +189,228 @@ OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 // return kPoint;
 04 00 <.kPoint>
 04 3A <.ReturnValue>
+53
+
+
+// ------------------------------------------------------------
+// Replace Camera.DoUpdateCamera
+//
+// Correct the camera's aspect/FOV adjustment after view-target blending and
+// immediately before FillCameraCache(NewPOV).
+//
+// The original executable scales the FOV half-angle linearly on most maps.
+// Prepare the input angle so that the original calculation produces the
+// tangent-based aspect adjustment instead:
+//
+//     R = (ViewportWidth / ViewportHeight) * (9.0 / 16.0)
+//     DesiredFOV = atan(tan(OriginalFOV * PI / 360.0) * R) * (360.0 / PI)
+//
+//     Command1 / CIN_LoadScreen / CIN_HQLoadScreen:
+//         PreparedFOV = DesiredFOV
+//     Other maps:
+//         PreparedFOV = DesiredFOV / R
+//
+// Use the main viewport dimensions directly. Preserve the original camera
+// update, transition blending, post-process settings, and fading logic.
+//
+// Intended result:
+//   - tangent-based aspect/FOV adjustment in all maps
+//   - compensate for the native linear multiplier where it remains active
+//   - 16:9 behavior remains unchanged
+// ------------------------------------------------------------
+
+UPK_FILE = Engine.upk
+
+// Add local LocalPlayer UW_LocalPlayer to Camera.DoUpdateCamera.
+[ADD_NAME_ENTRY]
+<%u15> <%t"UW_LocalPlayer"> <%u0> <%u0x00070010>
+
+[ADD_EXPORT_ENTRY]
+<Core.ObjectProperty> <NullRef> <Camera.DoUpdateCamera> <UW_LocalPlayer> <NullRef>
+<%u0> <%u0x00070004> <%u44> <%u0> <%u0> <%u0>
+<%u0> <%u0> <%u0> <%u0> <%u0>
+
+OBJECT = Camera.DoUpdateCamera.UW_LocalPlayer
+REL_OFFSET = 16
+[MODDED_CODE]
+<%s1> <%s0> <%u0x00000000> <%u0> <None> <NullRef> <Class.LocalPlayer>
+
+UPK_FILE = Engine.upk
+
+// Add local Vector2D UW_ViewportSize to Camera.DoUpdateCamera.
+[ADD_NAME_ENTRY]
+<%u16> <%t"UW_ViewportSize"> <%u0> <%u0x00070010>
+
+[ADD_EXPORT_ENTRY]
+<Core.StructProperty> <NullRef> <Camera.DoUpdateCamera> <UW_ViewportSize> <NullRef>
+<%u0> <%u0x00070004> <%u44> <%u0> <%u0> <%u0>
+<%u0> <%u0> <%u0> <%u0> <%u0>
+
+OBJECT = Camera.DoUpdateCamera.UW_ViewportSize
+REL_OFFSET = 16
+[MODDED_CODE]
+<%s1> <%s0> <%u0x00000000> <%u0> <None> <NullRef> <Core.Object.Vector2D>
+
+UPK_FILE = Engine.upk
+
+// Add local float UW_FOVRatio to Camera.DoUpdateCamera.
+[ADD_NAME_ENTRY]
+<%u12> <%t"UW_FOVRatio"> <%u0> <%u0x00070010>
+
+[ADD_EXPORT_ENTRY]
+<Core.FloatProperty> <NullRef> <Camera.DoUpdateCamera> <UW_FOVRatio> <NullRef>
+<%u0> <%u0x00070004> <%u40> <%u0> <%u0> <%u0>
+<%u0> <%u0> <%u0> <%u0> <%u0>
+
+OBJECT = Camera.DoUpdateCamera.UW_FOVRatio
+REL_OFFSET = 16
+[MODDED_CODE]
+<%s1> <%s0> <%u0x00000000> <%u0> <None> <NullRef>
+
+UPK_FILE = Engine.upk
+
+// Add local string UW_MapName to Camera.DoUpdateCamera.
+[ADD_NAME_ENTRY]
+<%u11> <%t"UW_MapName"> <%u0> <%u0x00070010>
+
+[ADD_EXPORT_ENTRY]
+<Core.StrProperty> <NullRef> <Camera.DoUpdateCamera> <UW_MapName> <NullRef>
+<%u0> <%u0x00070004> <%u40> <%u0> <%u0> <%u0>
+<%u0> <%u0> <%u0> <%u0> <%u0>
+
+OBJECT = Camera.DoUpdateCamera.UW_MapName
+REL_OFFSET = 16
+[MODDED_CODE]
+<%s1> <%s0> <%u0x00400000> <%u0> <None> <NullRef>
+
+UPK_FILE = Engine.upk
+
+OBJECT = Camera.DoUpdateCamera : AUTO
+[REPLACEMENT_CODE]
+// Original camera update: interpolate the global color scale when enabled.
+07 [@L00A5] 2D 01 <@bEnableColorScaleInterp>
+0F 00 <.BlendPct> F6 AC AF 19 01 <Actor.WorldInfo> [@] <WorldInfo.TimeSeconds> 00 ( 01 <WorldInfo.TimeSeconds> ) 01 <@ColorScaleInterpStartTime> 16 01 <@ColorScaleInterpDuration> 16 1E <%f0> 1E <%f1> 16
+0F 01 <@ColorScale> 1C <Core.Object.VLerp> 01 <@OriginalColorScale> 01 <@DesiredColorScale> 00 <.BlendPct> 16
+07 [@L00A5] B4 00 <.BlendPct> 1E <%f1> 16
+14 2D 01 <@bEnableColorScaleInterp> 28
+// End color interpolation; reset the post-process override weight.
+[#L00A5]
+0F 01 <@CamOverridePostProcessAlpha> 1E <%f0>
+// Update the current view target unless an outgoing transition locks it.
+07 [@L0129] 84 72 35 <Camera.TViewTarget.Target> <@TViewTarget> 00 00 01 <@PendingViewTarget> 2A 16 18 [@] ( 81 2D 35 <Camera.ViewTargetTransitionParams.bLockOutgoing> <@ViewTargetTransitionParams> 00 00 01 <@BlendParams> 16 16 )
+1B <CheckViewTarget> 01 <@ViewTarget> 16
+1B <UpdateViewTarget> 01 <@ViewTarget> 00 <.DeltaTime> 16
+// NewPOV = ViewTarget.POV; this is the starting view for this update.
+[#L0129]
+0F 00 <.NewPOV> 35 <Camera.TViewTarget.POV> <@TViewTarget> 00 00 01 <@ViewTarget>
+// If a pending target exists, update it and advance the transition timer.
+07 [@L0467] 77 35 <Camera.TViewTarget.Target> <@TViewTarget> 00 00 01 <@PendingViewTarget> 2A 16
+B9 01 <@BlendTimeToGo> 00 <.DeltaTime> 16
+1B <CheckViewTarget> 01 <@PendingViewTarget> 16
+1B <UpdateViewTarget> 01 <@PendingViewTarget> 00 <.DeltaTime> 16
+// Blend while time remains; otherwise switch to the pending target.
+07 [@L03B0] B1 01 <@BlendTimeToGo> 38 3F 25 16
+0F 00 <.DurationPct> AC AF 35 <Camera.ViewTargetTransitionParams.BlendTime> <@ViewTargetTransitionParams> 00 00 01 <@BlendParams> 01 <@BlendTimeToGo> 16 35 <Camera.ViewTargetTransitionParams.BlendTime> <@ViewTargetTransitionParams> 00 00 01 <@BlendParams> 16
+// Choose the stock blend curve: linear, cubic, ease-in, ease-out, or ease-in-out.
+05 <Camera.ViewTargetTransitionParams.BlendFunction> 00 35 <Camera.ViewTargetTransitionParams.BlendFunction> <@ViewTargetTransitionParams> 00 00 01 <@BlendParams>
+0A [@L0261] 24 00
+0F 00 <.BlendPct> F7 1E <%f0> 1E <%f1> 00 <.DurationPct> 16
+06 [@L037E]
+[#L0261]
+0A [@L029A] 24 01
+0F 00 <.BlendPct> 1C <Core.Object.FCubicInterp> 1E <%f0> 1E <%f0> 1E <%f1> 1E <%f0> 00 <.DurationPct> 16
+06 [@L037E]
+[#L029A]
+0A [@L02E5] 24 02
+0F 00 <.BlendPct> 1C <Core.Object.FInterpEaseIn> 1E <%f0> 1E <%f1> 00 <.DurationPct> 35 <Camera.ViewTargetTransitionParams.BlendExp> <@ViewTargetTransitionParams> 00 00 01 <@BlendParams> 16
+06 [@L037E]
+[#L02E5]
+0A [@L0330] 24 03
+0F 00 <.BlendPct> 1C <Core.Object.FInterpEaseOut> 1E <%f0> 1E <%f1> 00 <.DurationPct> 35 <Camera.ViewTargetTransitionParams.BlendExp> <@ViewTargetTransitionParams> 00 00 01 <@BlendParams> 16
+06 [@L037E]
+[#L0330]
+0A [@L037B] 24 04
+0F 00 <.BlendPct> 1C <Core.Object.FInterpEaseInOut> 1E <%f0> 1E <%f1> 00 <.DurationPct> 35 <Camera.ViewTargetTransitionParams.BlendExp> <@ViewTargetTransitionParams> 00 00 01 <@BlendParams> 16
+06 [@L037E]
+[#L037B]
+0A FF FF
+// NewPOV = BlendViewTargets(ViewTarget, PendingViewTarget, BlendPct).
+[#L037E]
+0F 00 <.NewPOV> 1C <@BlendViewTargets> 01 <@ViewTarget> 01 <@PendingViewTarget> 00 <.BlendPct> 16
+06 [@L0434]
+// Transition complete: promote PendingViewTarget and clear pending references.
+[#L03B0]
+0F 01 <@ViewTarget> 01 <@PendingViewTarget>
+0F 35 <Camera.TViewTarget.Target> <@TViewTarget> 00 01 01 <@PendingViewTarget> 2A
+0F 35 <Camera.TViewTarget.Controller> <@TViewTarget> 00 01 01 <@PendingViewTarget> 2A
+0F 01 <@BlendTimeToGo> 1E <%f0>
+0F 00 <.NewPOV> 35 <Camera.TViewTarget.POV> <@TViewTarget> 00 00 01 <@PendingViewTarget>
+// Preserve the original constrained-aspect-ratio handling.
+[#L0434]
+07 [@L0467] 2D 01 <@bConstrainAspectRatio>
+0F 01 <@ConstrainedAspectRatio> 35 <Camera.TViewTarget.AspectRatio> <@TViewTarget> 00 00 01 <@PendingViewTarget>
+[#L0467]
+// Begin inline FOV precursor: NewPOV already contains the blended camera view.
+// If WorldInfo is unavailable, skip correction and continue caching/fading.
+07 [@UW_done] 77 01 <Actor.WorldInfo> 2A 16
+// UW_MapName = WorldInfo.GetMapName().
+0F 00 <.UW_MapName> 19 01 <Actor.WorldInfo> [@] <WorldInfo.GetMapName.ReturnValue> 00 ( 1C <WorldInfo.GetMapName> 16 )
+// Without a player controller, skip correction.
+07 [@UW_done] 77 01 <@PCOwner> 2A 16
+// UW_LocalPlayer = LocalPlayer(PCOwner.Player); require a local player.
+0F 00 <.UW_LocalPlayer> 2E <Class.LocalPlayer> 19 01 <@PCOwner> [@] <PlayerController.Player> 00 ( 01 <PlayerController.Player> )
+07 [@UW_done] 77 00 <.UW_LocalPlayer> 2A 16
+// Require a valid LocalPlayer.ViewportClient before calling its native method.
+07 [@UW_done] 77 19 00 <.UW_LocalPlayer> [@] <LocalPlayer.ViewportClient> 00 ( 01 <LocalPlayer.ViewportClient> ) 2A 16
+// ViewportClient.GetViewportSize(UW_ViewportSize) returns the main viewport dimensions.
+19 19 00 <.UW_LocalPlayer> [@] <LocalPlayer.ViewportClient> 00 ( 01 <LocalPlayer.ViewportClient> ) [@] <NullRef> 00 ( 1C <GameViewportClient.GetViewportSize> 00 <.UW_ViewportSize> 16 )
+// Skip correction unless the viewport width is positive.
+07 [@UW_done] B1 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.UW_ViewportSize> 1E <%f0> 16
+// Skip correction unless the viewport height is positive.
+07 [@UW_done] B1 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.UW_ViewportSize> 1E <%f0> 16
+// R = (viewport width / viewport height) * 0.5625 = aspect / (16/9).
+0F 00 <.UW_FOVRatio> AB AC 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.UW_ViewportSize> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.UW_ViewportSize> 16 1E <%f0.5625> 16
+// Apply the tangent-based aspect adjustment in EVERY map.
+// DesiredFOV = ATan(Tan(OriginalFOV * PI/360) * R) * (360/PI).
+// PI/360 = 0.00872664625997165; 360/PI = 114.591559026165.
+// BD = Tan; BE = ATan; AB = float multiply; AC = float divide.
+0F 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 01 00 <.NewPOV>
+AB BE AB BD AB 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 00 00 <.NewPOV> 1E <%f0.00872664625997165> 16 16 00 <.UW_FOVRatio> 16 16 1E <%f114.591559026165> 16
+
+// These maps skip the stock native multiplier: cache DesiredFOV directly.
+07 [@UW_after_Command1] 7A 00 <.UW_MapName> 1F <%t"Command1"> 16
+06 [@UW_done]
+[#UW_after_Command1]
+07 [@UW_after_CIN_LoadScreen] 7A 00 <.UW_MapName> 1F <%t"CIN_LoadScreen"> 16
+06 [@UW_done]
+[#UW_after_CIN_LoadScreen]
+07 [@UW_after_CIN_HQLoadScreen] 7A 00 <.UW_MapName> 1F <%t"CIN_HQLoadScreen"> 16
+06 [@UW_done]
+[#UW_after_CIN_HQLoadScreen]
+// Other maps still multiply the half-angle by R in native CalcSceneView.
+// PreparedFOV = DesiredFOV / R cancels that multiplication:
+// native half-angle = (DesiredFOV/R) * PI/360 * R = DesiredFOV * PI/360.
+// At 16:9, R=1; both paths preserve the original FOV.
+0F 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 01 00 <.NewPOV> AC 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 00 00 <.NewPOV> 00 <.UW_FOVRatio> 16
+// End correction (or bypass): continue the original update without an early return.
+[#UW_done]
+
+// FillCameraCache(NewPOV): cache the final prepared POV after view-target blending.
+1C <@FillCameraCache> 00 <.NewPOV> 16
+// Original fading: advance FadeTimeRemaining and update FadeAmount.
+07 [@L0587] 82 2D 01 <@bEnableFading> 18 [@] ( B1 01 <@FadeTimeRemaining> 1E <%f0> 16 16 )
+0F 01 <@FadeTimeRemaining> F5 AF 01 <@FadeTimeRemaining> 00 <.DeltaTime> 16 1E <%f0> 16
+07 [@L0553] B1 01 <@FadeTime> 1E <%f0> 16
+0F 01 <@FadeAmount> AE 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 01 <@FadeAlpha> AB AF 1E <%f1> AC 01 <@FadeTimeRemaining> 01 <@FadeTime> 16 16 AF 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 01 <@FadeAlpha> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 01 <@FadeAlpha> 16 16 16
+// Original audio fading: apply it while enabled and stop when the fade reaches zero.
+[#L0553]
+07 [@L0587] 2D 01 <@bFadeAudio>
+1B <ApplyAudioFade> 16
+07 [@L0587] B4 01 <@FadeAmount> 38 3F 25 16
+14 2D 01 <@bFadeAudio> 28
+// End DoUpdateCamera.
+[#L0587]
+04 0B
 53
 
 
