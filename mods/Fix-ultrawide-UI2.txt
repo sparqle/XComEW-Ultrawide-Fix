@@ -1,12 +1,15 @@
+// ------------------------------------------------------------
 // XCOM: Enemy Within ultrawide UI and camera fixes
 //
-// Fixes:
 // - Fix screen-to-UI and UI-to-screen coordinate mapping
 // - Correct FOV to be Hor+ in both tactical and strategic screens
 // - Center modal dialogue box on ultrawide resolutions
 // - Stretch Headquarters top menu bar to full width on ultrawide resolutions
 // - Fix initial position top menu bar
 // - Retains support for sub-16:9 aspect ratios.
+// - Includes special uninstall handing to allow uninstall scripts to be properly generated.
+// ------------------------------------------------------------
+
 
 // ------------------------------------------------------------
 // Fix screen-to-UI and UI-to-screen coordinate mapping
@@ -33,32 +36,11 @@
 // This keeps both conversions consistent, prevents horizontal stretching,
 // and preserves 16:9 behavior.
 // ------------------------------------------------------------
+
 UPK_FILE = XComGame.upk
-OBJECT = UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords : AUTO
 
-[REPLACEMENT_CODE]
-0F 00 <.v2ScreenRes> 1B <GetScreenResolution> 16
-0F 00 <.X> 38 3F FB 38 44 AB 00 <.X> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 25 38 44 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
-0F 00 <.Y> 38 3F FB 38 44 AB 00 <.Y> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 25 38 44 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
-0F 00 <.ScaleFactor> F5 AC 38 3F 01 <@UIMGR_RES_Y> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 AC 38 3F 01 <@UIMGR_RES_X> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 16
-0F 00 <.inverseScaleFactor> AC 1E <%f 1> 00 <.ScaleFactor> 16
-0F 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> AF 00 <.X> AB AF 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> AB 38 3F 01 <@UIMGR_RES_X> 00 <.inverseScaleFactor> 16 16 1E <%f 0.5> 16 16
-0F 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> AF 00 <.Y> AB AF 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> AB 38 3F 01 <@UIMGR_RES_Y> 00 <.inverseScaleFactor> 16 16 1E <%f 0.5> 16 16
-B6 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> 00 <.ScaleFactor> 16
-B6 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> 00 <.ScaleFactor> 16
-04 00 <.v2ScreenSpacePos>
-04 3A <.ReturnValue>
-53
-
-OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
-
-// Convert the native function to a defined simulated UnrealScript function.
-// Match the original footer so an already-converted function is rejected.
-FIND_CODE = <%s0> <%b0> <%u0x00020500> <ConvertUIPointToScreenCoordinate>
-[MODDED_CODE]
-// Add local UW_kController.
-<%s0> <%b0> <%u0x00020102> <ConvertUIPointToScreenCoordinate>
-
+// Initialize all added locals before changing either function body.
+UNINSTALL = FALSE
 [ADD_NAME_ENTRY]
 <%u15> <%t"UW_kController"> <%u0> <%u0x00070010>
 
@@ -121,6 +103,34 @@ REL_OFFSET = 16
 // ArrayDim=1; ElementSize=0.
 // Local property flags.
 <%s1> <%s0> <%u0> <%u0> <None> <NullRef>
+
+// Record undo information for native flags and both function bodies.
+UNINSTALL = TRUE
+
+OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
+
+// Convert the native function to a defined simulated UnrealScript function.
+// Match the original footer so an already-converted function is rejected.
+FIND_CODE = <%s0> <%b0> <%u0x00020500> <ConvertUIPointToScreenCoordinate>
+[MODDED_CODE]
+// Add local UW_kController.
+<%s0> <%b0> <%u0x00020102> <ConvertUIPointToScreenCoordinate>
+
+OBJECT = UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords : AUTO
+
+[REPLACEMENT_CODE]
+0F 00 <.v2ScreenRes> 1B <GetScreenResolution> 16
+0F 00 <.X> 38 3F FB 38 44 AB 00 <.X> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 25 38 44 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
+0F 00 <.Y> 38 3F FB 38 44 AB 00 <.Y> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 25 38 44 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
+0F 00 <.ScaleFactor> F5 AC 38 3F 01 <@UIMGR_RES_Y> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 AC 38 3F 01 <@UIMGR_RES_X> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 16
+0F 00 <.inverseScaleFactor> AC 1E <%f 1> 00 <.ScaleFactor> 16
+0F 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> AF 00 <.X> AB AF 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> AB 38 3F 01 <@UIMGR_RES_X> 00 <.inverseScaleFactor> 16 16 1E <%f 0.5> 16 16
+0F 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> AF 00 <.Y> AB AF 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> AB 38 3F 01 <@UIMGR_RES_Y> 00 <.inverseScaleFactor> 16 16 1E <%f 0.5> 16 16
+B6 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> 00 <.ScaleFactor> 16
+B6 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> 00 <.ScaleFactor> 16
+04 00 <.v2ScreenSpacePos>
+04 3A <.ReturnValue>
+53
 
 OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 
@@ -193,6 +203,9 @@ OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 
 UPK_FILE = Engine.upk
 
+// Preserve initialized added locals during uninstall.
+UNINSTALL = FALSE
+
 // Class-name test avoids an Engine-to-XComGame class import.
 [ADD_NAME_ENTRY]
 <%u11> <%t"XComCamera"> <%u0> <%u0x00070010>
@@ -252,6 +265,9 @@ OBJECT = Camera.DoUpdateCamera.UW_MapName
 REL_OFFSET = 16
 [MODDED_CODE]
 <%s1> <%s0> <%u0x00400000> <%u0> <None> <NullRef>
+
+// Record undo information for the original camera update function.
+UNINSTALL = TRUE
 
 OBJECT = Camera.DoUpdateCamera : AUTO
 [REPLACEMENT_CODE]
