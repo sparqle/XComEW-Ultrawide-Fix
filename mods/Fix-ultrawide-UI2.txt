@@ -1,8 +1,8 @@
 // XCOM: Enemy Within ultrawide UI fixes
 //
 // Tactical UI fixes:
-// - Fix UI-to-screen conversion on ultrawide resolutions (highlighted square underneath curso)
-// - Fix Screen-to-UI conversion on ultrawide resolutions (healthbars, targetting recticles)
+// - Fix UI to screenspace mapping on ultrawide resolutions (Healthbars)
+// - Replace native UI-to-screen conversion with height-based, centered mapping
 //
 // Strategic UI fixes:
 // - Center modal dialogue box on ultrawide resolutions
@@ -81,102 +81,71 @@ OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 // Match the original footer so an already-converted function is rejected.
 FIND_CODE = <%s0> <%b0> <%u0x00020500> <ConvertUIPointToScreenCoordinate>
 [MODDED_CODE]
+// Add local UW_kController.
 <%s0> <%b0> <%u0x00020102> <ConvertUIPointToScreenCoordinate>
 
-// Add local UW_kController.
 [ADD_NAME_ENTRY]
 <%u15> <%t"UW_kController"> <%u0> <%u0x00070010>
 
 [ADD_EXPORT_ENTRY]
-<Core.ObjectProperty>
-<NullRef>
-<XComInputBase.ConvertUIPointToScreenCoordinate>
-<UW_kController>
-<NullRef>
-<%u0> <%u0x00070004>
-<%u44> <%u0>
-<%u0> <%u0>
+<Core.ObjectProperty> <NullRef> <XComInputBase.ConvertUIPointToScreenCoordinate> <UW_kController> <NullRef>
+<%u0> <%u0x00070004> <%u44> <%u0> <%u0> <%u0>
 <%u0> <%u0> <%u0> <%u0> <%u0>
 
 OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate.UW_kController
 REL_OFFSET = 16
 [MODDED_CODE]
-<%s1> <%s0> // ArrayDim=1; ElementSize=0.
-<%u0> <%u0> // Local property flags.
-<None>
-<NullRef>
-<Class.XComPlayerController>
-
+// ArrayDim=1; ElementSize=0.
+// Local property flags.
 // Add local UW_kLocalPlayer.
+<%s1> <%s0> <%u0> <%u0> <None> <NullRef> <Class.XComPlayerController>
+
 [ADD_NAME_ENTRY]
 <%u16> <%t"UW_kLocalPlayer"> <%u0> <%u0x00070010>
 
 [ADD_EXPORT_ENTRY]
-<Core.ObjectProperty>
-<NullRef>
-<XComInputBase.ConvertUIPointToScreenCoordinate>
-<UW_kLocalPlayer>
-<NullRef>
-<%u0> <%u0x00070004>
-<%u44> <%u0>
-<%u0> <%u0>
+<Core.ObjectProperty> <NullRef> <XComInputBase.ConvertUIPointToScreenCoordinate> <UW_kLocalPlayer> <NullRef>
+<%u0> <%u0x00070004> <%u44> <%u0> <%u0> <%u0>
 <%u0> <%u0> <%u0> <%u0> <%u0>
 
 OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate.UW_kLocalPlayer
 REL_OFFSET = 16
 [MODDED_CODE]
-<%s1> <%s0> // ArrayDim=1; ElementSize=0.
-<%u0> <%u0> // Local property flags.
-<None>
-<NullRef>
-<Class.XComLocalPlayer>
-
+// ArrayDim=1; ElementSize=0.
+// Local property flags.
 // Add local UW_kSceneView.
+<%s1> <%s0> <%u0> <%u0> <None> <NullRef> <Class.XComLocalPlayer>
+
 [ADD_NAME_ENTRY]
 <%u14> <%t"UW_kSceneView"> <%u0> <%u0x00070010>
 
 [ADD_EXPORT_ENTRY]
-<Core.ObjectProperty>
-<NullRef>
-<XComInputBase.ConvertUIPointToScreenCoordinate>
-<UW_kSceneView>
-<NullRef>
-<%u0> <%u0x00070004>
-<%u44> <%u0>
-<%u0> <%u0>
+<Core.ObjectProperty> <NullRef> <XComInputBase.ConvertUIPointToScreenCoordinate> <UW_kSceneView> <NullRef>
+<%u0> <%u0x00070004> <%u44> <%u0> <%u0> <%u0>
 <%u0> <%u0> <%u0> <%u0> <%u0>
 
 OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate.UW_kSceneView
 REL_OFFSET = 16
 [MODDED_CODE]
-<%s1> <%s0> // ArrayDim=1; ElementSize=0.
-<%u0> <%u0> // Local property flags.
-<None>
-<NullRef>
-<Class.ScriptSceneView>
-
+// ArrayDim=1; ElementSize=0.
+// Local property flags.
 // Add local UW_Scale.
+<%s1> <%s0> <%u0> <%u0> <None> <NullRef> <Class.ScriptSceneView>
+
 [ADD_NAME_ENTRY]
 <%u9> <%t"UW_Scale"> <%u0> <%u0x00070010>
 
 [ADD_EXPORT_ENTRY]
-<Core.FloatProperty>
-<NullRef>
-<XComInputBase.ConvertUIPointToScreenCoordinate>
-<UW_Scale>
-<NullRef>
-<%u0> <%u0x00070004>
-<%u40> <%u0>
-<%u0> <%u0>
+<Core.FloatProperty> <NullRef> <XComInputBase.ConvertUIPointToScreenCoordinate> <UW_Scale> <NullRef>
+<%u0> <%u0x00070004> <%u40> <%u0> <%u0> <%u0>
 <%u0> <%u0> <%u0> <%u0> <%u0>
 
 OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate.UW_Scale
 REL_OFFSET = 16
 [MODDED_CODE]
-<%s1> <%s0> // ArrayDim=1; ElementSize=0.
-<%u0> <%u0> // Local property flags.
-<None>
-<NullRef>
+// ArrayDim=1; ElementSize=0.
+// Local property flags.
+<%s1> <%s0> <%u0> <%u0> <None> <NullRef>
 
 OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 
