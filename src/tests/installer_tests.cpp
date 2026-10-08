@@ -143,6 +143,40 @@ void install_restore()
     require(xcom::read_file(xcom::Path(f.exe.wstring() + L".bak")) == f.clean, "First EXE backup replaced");
 }
 
+void restore_exe_only()
+{
+    Fixture f;
+    f.execute(xcom::Action::install);
+    const auto script = xcom::read_file(f.installer.uninstall_script());
+    const auto package = xcom::read_file(f.package);
+    const auto other = xcom::read_file(f.other);
+    const auto size_path = xcom::Path(f.package.wstring() + L".uncompressed_size");
+    xcom::write_file_atomic(size_path, bytes("retained size"));
+    auto edited = xcom::read_file(f.exe);
+    edited.push_back(42);
+    xcom::write_file_atomic(f.exe, edited);
+    std::filesystem::remove_all(f.root / "tools");
+    f.installer.run_tool = [](const auto&, const auto&)
+    {
+        throw std::runtime_error("EXE-only restore must not run tools");
+    };
+    require(!f.installer.needs_tools(xcom::Action::restore_exe), "EXE-only restore requires tools");
+    f.execute(xcom::Action::restore_exe);
+    auto expected = f.clean;
+    expected.push_back(42);
+    require(xcom::read_file(f.exe) == expected, "EXE-only restore lost unrelated edits");
+    require(xcom::read_file(f.package) == package && xcom::read_file(f.other) == other,
+            "EXE-only restore changed UPKs");
+    require(xcom::read_file(size_path) == bytes("retained size"), "EXE-only restore changed sidecar");
+    require(xcom::read_file(f.installer.uninstall_script()) == script, "EXE-only restore changed undo script");
+    f.execute(xcom::Action::restore_exe);
+    require(xcom::read_file(f.exe) == expected, "Repeated EXE-only restore changed EXE");
+    std::filesystem::remove(f.installer.uninstall_script());
+    f.execute(xcom::Action::install_exe);
+    f.execute(xcom::Action::restore_exe);
+    require(xcom::read_file(f.exe) == expected, "EXE-only restore failed without undo script");
+}
+
 void rollback()
 {
     Fixture f;
@@ -267,6 +301,7 @@ int main()
     try
     {
         install_restore();
+        restore_exe_only();
         rollback();
         restore_windows_script();
         unchanged_packages();

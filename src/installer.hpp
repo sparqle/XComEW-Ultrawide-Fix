@@ -19,6 +19,7 @@ enum class Action
     restore,
     status,
     install_exe,
+    restore_exe,
     phone_home
 };
 

@@ -281,7 +281,7 @@ void Installer::execute(Action action, const Path& base, const Path& tools, cons
         return;
     }
 
-    const bool restoring = action == Action::restore;
+    const bool restoring = action == Action::restore || action == Action::restore_exe;
     const auto result = restoring                      ? restore(original)
                         : action == Action::phone_home ? disable_phone_home(original)
                                                        : install(original);

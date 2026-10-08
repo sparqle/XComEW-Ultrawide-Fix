@@ -26,6 +26,7 @@ enum Control
     status,
     download,
     install_exe,
+    restore_exe,
     phone_home,
     about,
     game_label,
@@ -112,7 +113,7 @@ struct Window
     {
         for (const auto child : controls)
             EnableWindow(child, enabled);
-        for (const auto id : {install_exe, phone_home, download})
+        for (const auto id : {install_exe, restore_exe, phone_home, download})
             EnableMenuItem(GetMenu(handle), id, MF_BYCOMMAND | (enabled ? MF_ENABLED : MF_GRAYED));
         DrawMenuBar(handle);
     }
@@ -215,7 +216,7 @@ struct Window
                 worker.join();
             busy = true;
             enable_controls(false);
-            activity(action == xcom::Action::restore      ? L"Restoring..."
+            activity(action == xcom::Action::restore || action == xcom::Action::restore_exe ? L"Restoring..."
                      : action == xcom::Action::status     ? L"Checking status..."
                      : action == xcom::Action::phone_home ? L"Disabling phone home..."
                                                           : L"Installing...");
@@ -274,6 +275,7 @@ struct Window
         const auto menu = CreateMenu();
         const auto advanced_menu = CreatePopupMenu();
         AppendMenuW(advanced_menu, MF_STRING, install_exe, L"Install &EXE only");
+        AppendMenuW(advanced_menu, MF_STRING, restore_exe, L"&Restore EXE only");
         AppendMenuW(advanced_menu, MF_STRING, phone_home, L"Disable &Phone Home...");
         AppendMenuW(menu, MF_POPUP, reinterpret_cast<UINT_PTR>(advanced_menu), L"&Advanced");
         const auto help_menu = CreatePopupMenu();
@@ -378,6 +380,9 @@ LRESULT CALLBACK window_proc(HWND handle, UINT message, WPARAM wparam, LPARAM lp
             break;
         case install_exe:
             window->start(xcom::Action::install_exe);
+            break;
+        case restore_exe:
+            window->start(xcom::Action::restore_exe);
             break;
         case phone_home:
             window->start(xcom::Action::phone_home);

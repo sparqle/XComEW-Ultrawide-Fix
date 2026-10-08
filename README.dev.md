@@ -64,7 +64,7 @@ a five-minute timeout. Operations run on a worker thread; closing the window is
 blocked until the transaction finishes.
 
 The UI has two folder rows, a resizable activity log, Install/Restore/Status buttons
-and a native status bar. Advanced provides Install EXE only and Disable Phone Home.
+and a native status bar. Advanced provides Install EXE only, Restore EXE only and Disable Phone Home.
 Help contains the PatcherGUI download link and About dialog. The game directory is
 saved in UTF-8 `XComEW-Ultrawide-Fix.cfg` beside the app. Discovery checks the usual
 Steam folders on C: and D:.
