@@ -123,6 +123,11 @@ when using a resolution of 3440x1440.
 
 The patch changes the two mapping functions to assume the UI resolution is scaled-to-fit on height, and centered on 640.
 
+**Executable implementation:** We patch the native UXComInputBase::execConvertUIPointToScreenCoordinate() function directly. 
+
+**PatchUPK implementation:** We patch XComInputBase.ConvertUIPointToScreenCoordinate by modifying the UPK metadata bits
+to turn the native function into an UnrealScript function. We also retain support for the sub-16:9 aspect ratio.
+
 ### Camera FOV aspect ratio adjustments
 
 The FOV value determines how "zoomed in" the camera is.
@@ -148,8 +153,14 @@ This function was patched from the linear algorithm:
   halfFOV = atan(tan(halfFOV) * ((width / height) * 0.5625))
   ```
 
-Additionally, FOV adjustments are now always applied. The maps `Command1`, `CIN_LoadScreen`, and `CIN_HQLoadScreen` are no
-longer excluded.
+**Executable implementation:** We patch ULocalPlayer::CalcSceneView() directly to update the FOV calculation. Additionally, 
+we disable the map exclusion branches directly.
+
+**PatchUPK implementation:** We patch Camera.DoUpdateCamera in `Engine.upk`, modifying the FOV just before `FillCameraCache(NewPOV)` is called. 
+This is the closest UnrealScript 
+function before we dive into compiled code. Because the original linear algorithm is still applied, we compensate for it in our logic.
+We also compensate for the map exclusions as we cannot disable them outright. We also retain support for the sub-16:9 aspect ratio.
+
 
 ### Smaller UI fixes
 
