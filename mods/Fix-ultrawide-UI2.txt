@@ -1,40 +1,37 @@
 // XCOM: Enemy Within ultrawide UI and camera fixes
 //
-// Camera fixes:
+// Fixes:
+// - Fix screen-to-UI and UI-to-screen coordinate mapping
 // - Correct FOV to be Hor+ in both tactical and strategic screens
-//
-// Tactical UI fixes:
-// - Fix UI to screenspace mapping on ultrawide resolutions (Healthbars)
-// - Replace native UI-to-screen conversion with height-based, centered mapping
-//
-// Strategic UI fixes:
 // - Center modal dialogue box on ultrawide resolutions
 // - Stretch Headquarters top menu bar to full width on ultrawide resolutions
 // - Fix initial position top menu bar
 
-
+// ------------------------------------------------------------
+// Fix screen-to-UI and UI-to-screen coordinate mapping
+//
+// Replace:
+//   UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords (UI to screen)
+//   XComInputBase.ConvertUIPointToScreenCoordinate (bad name, does screen to UI)
+//
+// Map between screen pixels and the game's 1280x720 UI canvas using
+// screen HEIGHT for scaling and horizontal centering:
+//
+//     Scale = ScreenHeight / 720.0
+//     OffsetX = (ScreenWidth - 1280.0 * Scale) * 0.5
+//
+//     Screen to UI (after converting normalized coordinates to pixels):
+//         UIX = (ScreenX - OffsetX) / Scale
+//         UIY = ScreenY / Scale
+//
+//     UI to screen:
+//         ScreenX = UIX * Scale + OffsetX
+//         ScreenY = UIY * Scale
+//
+// This keeps both conversions consistent, prevents horizontal stretching,
+// and preserves 16:9 behavior.
+// ------------------------------------------------------------
 UPK_FILE = XComGame.upk
-
-// ------------------------------------------------------------
-// Replace UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords
-//
-// Converts normalized screen coordinates into the game's 1280x720 UI space.
-//
-// Original game logic scales from screen WIDTH, which causes incorrect mapping
-// on ultrawide resolutions. This patch instead scales from screen HEIGHT:
-//
-//     ScaleFactor = UIMGR_RES_Y / ScreenHeight
-//
-// This preserves the 1280x720 UI aspect ratio and horizontally centers the UI
-// canvas on wider screens, matching the ConvertUIPointToScreenCoordinate
-// replacement below.
-//
-// Intended result:
-//   - correct mouse/UI positioning on ultrawide
-//   - no horizontal stretching of the virtual UI coordinate space
-//   - 16:9 behavior remains unchanged
-// ------------------------------------------------------------
-
 OBJECT = UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords : AUTO
 
 [REPLACEMENT_CODE]
@@ -51,33 +48,6 @@ OBJECT = UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords : AUTO
 /*(0x022B/0x015F)*/ 04 3A <.ReturnValue>
 /*(0x0235/0x0165)*/ 53
 
-
-// ------------------------------------------------------------
-// Replace XComInputBase.ConvertUIPointToScreenCoordinate
-//
-// Converts the game's 1280x720 UI coordinates into screen pixel coordinates.
-//
-// Scale from screen HEIGHT and horizontally center the UI canvas, matching
-// UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords in the reverse direction:
-//
-//     ScaleFactor = ScreenHeight / 720.0
-//     ScreenX = ScreenWidth * 0.5 + (UIX - 640.0) * ScaleFactor
-//     ScreenY = UIY * ScaleFactor
-//
-// Replace the native implementation with a simulated UnrealScript function
-// and add the controller, local player, scene view, and scale locals it needs.
-// If the controller, player, or scene view is unavailable, return the input point.
-//
-// Intended result:
-//   - correct UI-to-screen coordinate mapping on ultrawide
-//   - no horizontal stretching of the virtual UI coordinate space
-//   - 16:9 behavior remains unchanged
-//
-// Apply once to the original native function. Do not also apply the standalone
-// ConvertUIPointToScreenCoordinate patch to the same package.
-// ------------------------------------------------------------
-
-UPK_FILE = XComGame.upk
 OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 
 // Convert the native function to a defined simulated UnrealScript function.
@@ -191,7 +161,6 @@ OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 04 3A <.ReturnValue>
 53
 
-
 // ------------------------------------------------------------
 // Replace Camera.DoUpdateCamera
 //
@@ -235,8 +204,6 @@ REL_OFFSET = 16
 [MODDED_CODE]
 <%s1> <%s0> <%u0x00000000> <%u0> <None> <NullRef> <Class.LocalPlayer>
 
-UPK_FILE = Engine.upk
-
 // Add local Vector2D UW_ViewportSize to Camera.DoUpdateCamera.
 [ADD_NAME_ENTRY]
 <%u16> <%t"UW_ViewportSize"> <%u0> <%u0x00070010>
@@ -250,8 +217,6 @@ OBJECT = Camera.DoUpdateCamera.UW_ViewportSize
 REL_OFFSET = 16
 [MODDED_CODE]
 <%s1> <%s0> <%u0x00000000> <%u0> <None> <NullRef> <Core.Object.Vector2D>
-
-UPK_FILE = Engine.upk
 
 // Add local float UW_FOVRatio to Camera.DoUpdateCamera.
 [ADD_NAME_ENTRY]
@@ -267,8 +232,6 @@ REL_OFFSET = 16
 [MODDED_CODE]
 <%s1> <%s0> <%u0x00000000> <%u0> <None> <NullRef>
 
-UPK_FILE = Engine.upk
-
 // Add local string UW_MapName to Camera.DoUpdateCamera.
 [ADD_NAME_ENTRY]
 <%u11> <%t"UW_MapName"> <%u0> <%u0x00070010>
@@ -282,8 +245,6 @@ OBJECT = Camera.DoUpdateCamera.UW_MapName
 REL_OFFSET = 16
 [MODDED_CODE]
 <%s1> <%s0> <%u0x00400000> <%u0> <None> <NullRef>
-
-UPK_FILE = Engine.upk
 
 OBJECT = Camera.DoUpdateCamera : AUTO
 [REPLACEMENT_CODE]
@@ -433,8 +394,8 @@ AB BE AB BD AB 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 00 00 <.NewPOV> 1
 // Other UI elements use anchors which properly take the resolution into account.
 // ------------------------------------------------------------
 
-UPK_FILE=UICollection_Common_SF.upk
-OBJECT=gfxDialogueBox.DialogueBox
+UPK_FILE = UICollection_Common_SF.upk
+OBJECT = gfxDialogueBox.DialogueBox
 
 [BEFORE_HEX]
 96 04 00 08 49 08 4A 1C 96 02 00 08 4B 4E
@@ -454,8 +415,8 @@ OBJECT=gfxDialogueBox.DialogueBox
 // The Flash element facilityHeaderBracket needs to be stretched to fill the entire width of the screen.
 // ------------------------------------------------------------
 
-UPK_FILE=UICollection_Strategy_SF.upk
-OBJECT=gfxStrategyHUD.StrategyHUD:AUTO
+UPK_FILE = UICollection_Strategy_SF.upk
+OBJECT = gfxStrategyHUD.StrategyHUD:AUTO
 
 [BEFORE_HEX]
 0C 4C 03 00 47 46 58 08 0C 4C 03 00 80 00 03 20 00 00 01 C2
