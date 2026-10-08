@@ -6,7 +6,6 @@
 > [`mods/Fix-ultrawide.txt`](mods/Fix-ultrawide.txt). 
 >
 > Together, these replace all ultrawide modifications performed by this executable, without needing to modify `XComEW.exe`.
-> The executable installation and restoration instructions below are retained for posterity.
 
 An ultrawide resolution fix for **XCOM: Enemy Within** and **Long War** to make it properly expand horizontally, turning it into a [Hor+](https://www.wsgf.org/article/screen-change) game.
 
@@ -19,8 +18,19 @@ It addresses several visual and input problems at wide aspect ratios:
 
 The fix modifies `XComEW.exe` for the camera and mouse/ground selection, and patches several UPK files for additional UI fixes.
 
+## Install (PatchGUI)
 
-## Install
+1. Close the game.
+2. Download and extract [PatcherGUI](https://www.nexusmods.com/xcom/mods/448).
+3. Download mode file: [`mods/Fix-ultrawide.txt`](mods/Fix-ultrawide.txt).
+4. Open PatcherGUI.
+5. Browse to your "XCom-Enemy-Unknown/XEW" directory.
+6. Browse to the mod file: `Fix-ultrawide.txt`
+7. Click **Apply** to install.
+
+## Install (legacy)
+
+> The legacy executable installation and restoration instructions below are retained for posterity.
 
 The installer will try to find your XCOM installation folder in the usual places. If it cannot find it, you need to 
 browse to your "XCom-Enemy-Unknown" directory (not the XEW directory inside it).
