@@ -6,6 +6,7 @@
 // - Center modal dialogue box on ultrawide resolutions
 // - Stretch Headquarters top menu bar to full width on ultrawide resolutions
 // - Fix initial position top menu bar
+// - Retains support for sub-16:9 aspect ratios.
 
 // ------------------------------------------------------------
 // Fix screen-to-UI and UI-to-screen coordinate mapping
@@ -15,18 +16,19 @@
 //   XComInputBase.ConvertUIPointToScreenCoordinate (bad name, does screen to UI)
 //
 // Map between screen pixels and the game's 1280x720 UI canvas using
-// screen HEIGHT for scaling and horizontal centering:
+// the smaller width/height scale and centering on both axes:
 //
-//     Scale = ScreenHeight / 720.0
+//     Scale = Min(ScreenWidth / 1280.0, ScreenHeight / 720.0)
 //     OffsetX = (ScreenWidth - 1280.0 * Scale) * 0.5
+//     OffsetY = (ScreenHeight - 720.0 * Scale) * 0.5
 //
 //     Screen to UI (after converting normalized coordinates to pixels):
 //         UIX = (ScreenX - OffsetX) / Scale
-//         UIY = ScreenY / Scale
+//         UIY = (ScreenY - OffsetY) / Scale
 //
 //     UI to screen:
 //         ScreenX = UIX * Scale + OffsetX
-//         ScreenY = UIY * Scale
+//         ScreenY = UIY * Scale + OffsetY
 //
 // This keeps both conversions consistent, prevents horizontal stretching,
 // and preserves 16:9 behavior.
@@ -35,18 +37,18 @@ UPK_FILE = XComGame.upk
 OBJECT = UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords : AUTO
 
 [REPLACEMENT_CODE]
-/*(0x0000/0x0000)*/ 0F 00 <.v2ScreenRes> 1B <GetScreenResolution> 16
-/*(0x0014/0x0010)*/ 0F 00 <.X> 38 3F FB 38 44 AB 00 <.X> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 25 38 44 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
-/*(0x006A/0x0046)*/ 0F 00 <.Y> 38 3F FB 38 44 AB 00 <.Y> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 25 38 44 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
-/*(0x00C0/0x007C)*/ 0F 00 <.ScaleFactor> AC 38 3F 01 <@UIMGR_RES_Y> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
-/*(0x00F3/0x009B)*/ 0F 00 <.inverseScaleFactor> AC 1E <%f 1> 00 <.ScaleFactor> 16
-/*(0x010D/0x00AD)*/ 0F 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> AF 00 <.X> AB AF 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> AB 38 3F 01 <@UIMGR_RES_X> 00 <.inverseScaleFactor> 16 16 1E <%f 0.5> 16 16
-/*(0x0170/0x00EC)*/ 0F 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> AF 00 <.Y> AB AF 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> AB 38 3F 01 <@UIMGR_RES_Y> 00 <.inverseScaleFactor> 16 16 1E <%f 0.5> 16 16
-/*(0x01D3/0x012B)*/ B6 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> 00 <.ScaleFactor> 16
-/*(0x01FA/0x0142)*/ B6 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> 00 <.ScaleFactor> 16
-/*(0x0221/0x0159)*/ 04 00 <.v2ScreenSpacePos>
-/*(0x022B/0x015F)*/ 04 3A <.ReturnValue>
-/*(0x0235/0x0165)*/ 53
+0F 00 <.v2ScreenRes> 1B <GetScreenResolution> 16
+0F 00 <.X> 38 3F FB 38 44 AB 00 <.X> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 25 38 44 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
+0F 00 <.Y> 38 3F FB 38 44 AB 00 <.Y> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 25 38 44 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
+0F 00 <.ScaleFactor> F5 AC 38 3F 01 <@UIMGR_RES_Y> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 AC 38 3F 01 <@UIMGR_RES_X> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 16
+0F 00 <.inverseScaleFactor> AC 1E <%f 1> 00 <.ScaleFactor> 16
+0F 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> AF 00 <.X> AB AF 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> AB 38 3F 01 <@UIMGR_RES_X> 00 <.inverseScaleFactor> 16 16 1E <%f 0.5> 16 16
+0F 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> AF 00 <.Y> AB AF 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> AB 38 3F 01 <@UIMGR_RES_Y> 00 <.inverseScaleFactor> 16 16 1E <%f 0.5> 16 16
+B6 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> 00 <.ScaleFactor> 16
+B6 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> 00 <.ScaleFactor> 16
+04 00 <.v2ScreenSpacePos>
+04 3A <.ReturnValue>
+53
 
 OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 
@@ -147,14 +149,14 @@ OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 04 00 <.kPoint>
 [#have_scene]
 
-// UW_Scale = UW_kSceneView.SizeY / 720.0;
-0F 00 <.UW_Scale> AC 19 00 <.UW_kSceneView> [@] <ScriptSceneView.SizeY> 00 ( 01 <ScriptSceneView.SizeY> ) 1E <%f720.0> 16
+// UW_Scale = Min(SizeY / 720.0, SizeX / 1280.0); fit the entire UI canvas.
+0F 00 <.UW_Scale> F4 AC 19 00 <.UW_kSceneView> [@] <ScriptSceneView.SizeY> 00 ( 01 <ScriptSceneView.SizeY> ) 1E <%f720.0> 16 AC 19 00 <.UW_kSceneView> [@] <ScriptSceneView.SizeX> 00 ( 01 <ScriptSceneView.SizeX> ) 1E <%f1280.0> 16 16
 
 // kPoint.X = UW_kSceneView.SizeX * 0.5 + (kPoint.X - 640.0) * UW_Scale;
 0F 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.kPoint> AE AB 19 00 <.UW_kSceneView> [@] <ScriptSceneView.SizeX> 00 ( 01 <ScriptSceneView.SizeX> ) 1E <%f0.5> 16 AB AF 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.kPoint> 1E <%f640.0> 16 00 <.UW_Scale> 16 16
 
-// kPoint.Y = kPoint.Y * UW_Scale;
-0F 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.kPoint> AB 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.kPoint> 00 <.UW_Scale> 16
+// kPoint.Y = SizeY * 0.5 + (kPoint.Y - 360.0) * UW_Scale; center vertically.
+0F 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.kPoint> AE AB 19 00 <.UW_kSceneView> [@] <ScriptSceneView.SizeY> 00 ( 01 <ScriptSceneView.SizeY> ) 1E <%f0.5> 16 AB AF 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.kPoint> 1E <%f360.0> 16 00 <.UW_Scale> 16 16
 
 // return kPoint;
 04 00 <.kPoint>
@@ -172,7 +174,7 @@ OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 // tangent-based aspect adjustment instead:
 //
 //     R = (ViewportWidth / ViewportHeight) * (9.0 / 16.0)
-//     DesiredFOV = atan(tan(OriginalFOV * PI / 360.0) * R) * (360.0 / PI)
+//     DesiredFOV = atan(tan(OriginalFOV * PI / 360.0) * Max(R, 1.0)) * (360.0 / PI)
 //
 //     Command1 / CIN_LoadScreen / CIN_HQLoadScreen:
 //         PreparedFOV = DesiredFOV
@@ -183,7 +185,7 @@ OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 // update, transition blending, post-process settings, and fading logic.
 //
 // Intended result:
-//   - tangent-based aspect/FOV adjustment in all maps
+//   - Hor+ above 16:9; Vert+ below 16:9, including 5:4
 //   - compensate for the native linear multiplier where it remains active
 //   - 16:9 behavior remains unchanged
 // ------------------------------------------------------------
@@ -331,12 +333,13 @@ B9 01 <@BlendTimeToGo> 00 <.DeltaTime> 16
 07 [@UW_done] B1 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.UW_ViewportSize> 1E <%f0> 16
 // R = (viewport width / viewport height) * 0.5625 = aspect / (16/9).
 0F 00 <.UW_FOVRatio> AB AC 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.UW_ViewportSize> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.UW_ViewportSize> 16 1E <%f0.5625> 16
-// Apply the tangent-based aspect adjustment in EVERY map.
-// DesiredFOV = ATan(Tan(OriginalFOV * PI/360) * R) * (360/PI).
+// Apply Hor+ above 16:9; hold horizontal FOV below 16:9 for Vert+.
+// F5 = FMax: use Max(R, 1.0) here, but retain actual R for native compensation.
+// DesiredFOV = ATan(Tan(OriginalFOV * PI/360) * Max(R, 1.0)) * (360/PI).
 // PI/360 = 0.00872664625997165; 360/PI = 114.591559026165.
 // BD = Tan; BE = ATan; AB = float multiply; AC = float divide.
 0F 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 01 00 <.NewPOV>
-AB BE AB BD AB 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 00 00 <.NewPOV> 1E <%f0.00872664625997165> 16 16 00 <.UW_FOVRatio> 16 16 1E <%f114.591559026165> 16
+AB BE AB BD AB 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 00 00 <.NewPOV> 1E <%f0.00872664625997165> 16 16 F5 00 <.UW_FOVRatio> 1E <%f1.0> 16 16 16 1E <%f114.591559026165> 16
 
 // These maps skip the stock native multiplier: cache DesiredFOV directly.
 07 [@UW_after_Command1] 7A 00 <.UW_MapName> 1F <%t"Command1"> 16
@@ -352,6 +355,7 @@ AB BE AB BD AB 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 00 00 <.NewPOV> 1
 // PreparedFOV = DesiredFOV / R cancels that multiplication:
 // native half-angle = (DesiredFOV/R) * PI/360 * R = DesiredFOV * PI/360.
 // At 16:9, R=1; both paths preserve the original FOV.
+// At 5:4, R=0.703125; divide by R only on maps using the native multiplier.
 0F 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 01 00 <.NewPOV> AC 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 00 00 <.NewPOV> 00 <.UW_FOVRatio> 16
 // End correction (or bypass): continue the original update without an early return.
 [#UW_done]
