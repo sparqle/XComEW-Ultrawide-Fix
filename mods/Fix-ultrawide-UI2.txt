@@ -185,12 +185,17 @@ OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 // update, transition blending, post-process settings, and fading logic.
 //
 // Intended result:
-//   - Hor+ above 16:9; Vert+ below 16:9, including 5:4
+//   - Hor+ above 16:9; stock tactical FOV below 16:9
+//   - Vert+ below 16:9 for other cameras, including HQ/menu
 //   - compensate for the native linear multiplier where it remains active
 //   - 16:9 behavior remains unchanged
 // ------------------------------------------------------------
 
 UPK_FILE = Engine.upk
+
+// Class-name test avoids an Engine-to-XComGame class import.
+[ADD_NAME_ENTRY]
+<%u11> <%t"XComCamera"> <%u0> <%u0x00070010>
 
 // Add local LocalPlayer UW_LocalPlayer to Camera.DoUpdateCamera.
 [ADD_NAME_ENTRY]
@@ -333,7 +338,16 @@ B9 01 <@BlendTimeToGo> 00 <.DeltaTime> 16
 07 [@UW_done] B1 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.UW_ViewportSize> 1E <%f0> 16
 // R = (viewport width / viewport height) * 0.5625 = aspect / (16/9).
 0F 00 <.UW_FOVRatio> AB AC 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.UW_ViewportSize> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.UW_ViewportSize> 16 1E <%f0.5625> 16
-// Apply Hor+ above 16:9; hold horizontal FOV below 16:9 for Vert+.
+
+// Tactical cameras below 16:9: bypass our FOV adjustment entirely.
+// Leave NewPOV.FOV untouched so native CalcSceneView applies its stock logic.
+// C5 = IsA (native 197), including subclasses of XComCamera.
+07 [@UW_apply_aspect] C5 21 <XComCamera> 16
+07 [@UW_apply_aspect] B0 00 <.UW_FOVRatio> 1E <%f1.0> 16
+06 [@UW_done]
+[#UW_apply_aspect]
+
+// Remaining paths: Hor+ above 16:9; Vert+ below 16:9 for non-tactical cameras.
 // F5 = FMax: use Max(R, 1.0) here, but retain actual R for native compensation.
 // DesiredFOV = ATan(Tan(OriginalFOV * PI/360) * Max(R, 1.0)) * (360/PI).
 // PI/360 = 0.00872664625997165; 360/PI = 114.591559026165.
