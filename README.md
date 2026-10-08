@@ -3,7 +3,7 @@
 > [!IMPORTANT]
 > The application `XComEW-Ultrawide-Fix.exe` is no longer necessary. 
 > The complete ultrawide fix can now be installed using [PatcherGUI](https://www.nexusmods.com/xcom/mods/448) with just the file
-> [`mods/Fix-ultrawide.txt`](mods/Fix-ultrawide.txt). 
+> [`mods/Ultrawide-resolution-fix.txt`](mods/Ultrawide-resolution-fix.txt). 
 >
 > Together, these replace all ultrawide modifications performed by this executable, without needing to modify `XComEW.exe`.
 
@@ -22,10 +22,10 @@ The fix modifies `XComEW.exe` for the camera and mouse/ground selection, and pat
 
 1. Close the game.
 2. Download and extract [PatcherGUI](https://www.nexusmods.com/xcom/mods/448).
-3. Download mode file: [`mods/Fix-ultrawide.txt`](mods/Fix-ultrawide.txt).
+3. Download mode file: [`mods/Ultrawide-resolution-fix.txt`](mods/Ultrawide-resolution-fix.txt).
 4. Open PatcherGUI.
 5. Browse to your "XCom-Enemy-Unknown/XEW" directory.
-6. Browse to the mod file: `Fix-ultrawide.txt`
+6. Browse to the mod file: `Ultrawide-resolution-fix.txt`
 7. Click **Apply** to install.
 
 ## Install (legacy)
