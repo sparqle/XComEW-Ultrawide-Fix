@@ -1,0 +1,140 @@
+// XCOM: Enemy Within ultrawide UI fixes
+//
+// Tactical UI fixes:
+// - Fix UI to screenspace mapping on ultrawide resolutions (Healthbars)
+//
+// Strategic UI fixes:
+// - Center modal dialogue box on ultrawide resolutions
+// - Stretch Headquarters top menu bar to full width on ultrawide resolutions
+// - Fix initial position top menu bar
+
+
+UPK_FILE = XComGame.upk
+
+// ------------------------------------------------------------
+// Replace UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords
+//
+// Converts normalized screen coordinates into the game's 1280x720 UI space.
+//
+// Original game logic scales from screen WIDTH, which causes incorrect mapping
+// on ultrawide resolutions. This patch instead scales from screen HEIGHT:
+//
+//     ScaleFactor = UIMGR_RES_Y / ScreenHeight
+//
+// This preserves the 1280x720 UI aspect ratio and horizontally centers the UI
+// canvas on wider screens, matching the native ConvertUIPointToScreenCoordinate
+// ultrawide fix.
+//
+// Intended result:
+//   - correct mouse/UI positioning on ultrawide
+//   - no horizontal stretching of the virtual UI coordinate space
+//   - 16:9 behavior remains unchanged
+// ------------------------------------------------------------
+
+OBJECT = UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords : AUTO
+
+[REPLACEMENT_CODE]
+/*(0x0000/0x0000)*/ 0F 00 <.v2ScreenRes> 1B <GetScreenResolution> 16
+/*(0x0014/0x0010)*/ 0F 00 <.X> 38 3F FB 38 44 AB 00 <.X> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 25 38 44 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
+/*(0x006A/0x0046)*/ 0F 00 <.Y> 38 3F FB 38 44 AB 00 <.Y> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16 25 38 44 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
+/*(0x00C0/0x007C)*/ 0F 00 <.ScaleFactor> AC 38 3F 01 <@UIMGR_RES_Y> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> 16
+/*(0x00F3/0x009B)*/ 0F 00 <.inverseScaleFactor> AC 1E <%f 1> 00 <.ScaleFactor> 16
+/*(0x010D/0x00AD)*/ 0F 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> AF 00 <.X> AB AF 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> AB 38 3F 01 <@UIMGR_RES_X> 00 <.inverseScaleFactor> 16 16 1E <%f 0.5> 16 16
+/*(0x0170/0x00EC)*/ 0F 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> AF 00 <.Y> AB AF 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.v2ScreenRes> AB 38 3F 01 <@UIMGR_RES_Y> 00 <.inverseScaleFactor> 16 16 1E <%f 0.5> 16 16
+/*(0x01D3/0x012B)*/ B6 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> 00 <.ScaleFactor> 16
+/*(0x01FA/0x0142)*/ B6 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 01 00 <.v2ScreenSpacePos> 00 <.ScaleFactor> 16
+/*(0x0221/0x0159)*/ 04 00 <.v2ScreenSpacePos>
+/*(0x022B/0x015F)*/ 04 3A <.ReturnValue>
+/*(0x0235/0x0165)*/ 53
+
+
+// ------------------------------------------------------------
+// Center modal dialogue box on ultrawide resolutions.
+//
+// The DialogueBox.realise actionscript function does:
+//
+//  this.bg._x = Stage.width * 0.5;
+//  this.bg._y = Stage.height * 0.5;
+//
+// which is wrong for ultrawide resolutions as the coordinate system is 1280x720 centered,
+// with negative values for x and y if wider.
+//
+// The fix is to replace the above with a static to the known coordinate system center:
+//
+//  this.bg._x = 1280 * 0.5 - 720 * 0.5;
+//  this.bg._y = 1280 * 0.5 - 720 * 0.5;
+//
+// Other UI elements use anchors which properly take the resolution into account.
+// ------------------------------------------------------------
+
+UPK_FILE=UICollection_Common_SF.upk
+OBJECT=gfxDialogueBox.DialogueBox
+
+[BEFORE_HEX]
+96 04 00 08 49 08 4A 1C 96 02 00 08 4B 4E
+
+[AFTER_HEX]
+96 07 00 08 49 07 00 05 00 00 4D 4D 4D 4D
+
+[BEFORE_HEX]
+96 04 00 08 4C 08 4A 1C 96 02 00 08 4D 4E
+
+[AFTER_HEX]
+96 07 00 08 4C 07 D0 02 00 00 4D 4D 4D 4D
+
+// ------------------------------------------------------------
+// Stretch Headquarters top menu bar to full width on ultrawide resolutions
+//
+// The Flash element facilityHeaderBracket needs to be stretched to fill the entire width of the screen.
+// ------------------------------------------------------------
+
+UPK_FILE=UICollection_Strategy_SF.upk
+OBJECT=gfxStrategyHUD.StrategyHUD:AUTO
+
+[BEFORE_HEX]
+0C 4C 03 00 47 46 58 08 0C 4C 03 00 80 00 03 20 00 00 01 C2
+
+[AFTER_HEX]
+0D 4C 03 00 47 46 58 08 0D 4C 03 00 80 00 03 20 00 00 01 C2
+
+OBJECT=gfxStrategyHUD.StrategyHUD:AUTO
+
+[BEFORE_HEX]
+FF 09 8F 00 00 00 51 00 01 00 BF 06 16 00 00 00 26 01 00 4C
+
+[AFTER_HEX]
+FF 09 90 00 00 00 51 00 01 00 BF 06 16 00 00 00 26 01 00 4C
+
+OBJECT=gfxStrategyHUD.StrategyHUD:AUTO
+
+[BEFORE_HEX]
+BF 06 24 00 00 00 26 05 00 50 00 C9 62 18 40 00 0C 4F F5 2F 66 61 63 69 6C 69 74 79 48 65 61 64 65 72 42 72 61 63 6B 65 74 00
+
+[AFTER_HEX]
+BF 06 25 00 00 00 26 05 00 50 00 CD 09 92 10 00 08 18 B3 AA 5E 66 61 63 69 6C 69 74 79 48 65 61 64 65 72 42 72 61 63 6B 65 74 00
+
+// ------------------------------------------------------------
+// Fix initial position top menu bar
+//
+// There is a race condition where the top menu bar is positioned incorrectly
+// when the game loads.
+//
+// The fix is to wait until all facility buttons have loaded before retrying.
+// ------------------------------------------------------------
+
+UPK_FILE = XComStrategyGame.upk
+OBJECT = UIStrategyHUD_FacilityMenu.OnFlashCommand : AUTO
+
+[REPLACEMENT_CODE]
+07 [@end] 7A 00 <.Cmd> 1F <%t "AllItemsLoaded"> 16
+    14 2D 01 <@bItemsLoaded> 27
+    07 [@after_update] 2D 01 <@bPumpDataPostItemLoad>
+        1B <UpdateData> 4A 16
+    [#after_update]
+    07 [@refresh_layout] 81 19 01 <XComGame.UI_FxsPanel.manager> [@] <XComGame.UIFxsMovie.IsMouseActive.ReturnValue> 00 ( 1B <IsMouseActive> 16 ) 16
+        1C <@RealizeSelected> 16
+    [#refresh_layout]
+    1B <Invoke> 1F <%t "onResourcesLoaded"> 4A 4A 16
+[#end]
+04 0B
+53
