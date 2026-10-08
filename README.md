@@ -16,7 +16,7 @@ It addresses several visual and input problems at wide aspect ratios:
 - Camera is a bit too zoomed out when on missions or main screen.
 - The health bars and other hovering UI elements don't follow units.
 
-## Install (PatchGUI)
+## Install (PatcherGUI)
 
 1. Close the game.
 2. Download and extract [PatcherGUI](https://www.nexusmods.com/xcom/mods/448).
