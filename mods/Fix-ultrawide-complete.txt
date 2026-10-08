@@ -10,6 +10,9 @@
 // - Includes special uninstall handing to allow uninstall scripts to be properly generated.
 // ------------------------------------------------------------
 
+MOD_NAME = Ultrawide UI and camera fixes
+DESCRIPTION = Ultrawide UI and camera fixes to turn XCOM-EW into a Hor+ game. Tested on EW/LW/LWR.
+AUTHOR = Sparq
 
 // ------------------------------------------------------------
 // Fix screen-to-UI and UI-to-screen coordinate mapping

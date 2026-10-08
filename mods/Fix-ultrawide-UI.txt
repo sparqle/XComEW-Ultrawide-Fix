@@ -9,6 +9,10 @@
 // - Stretch Headquarters top menu bar to full width on ultrawide resolutions
 // - Fix initial position top menu bar
 
+MOD_NAME = Enemy Within ultrawide UI fixes, companion for XComEW.exe patch
+DESCRIPTION = Ultrawide UI and camera fixes that completes the ultrawide XComEW.exe patch. Tested on EW/LW/LWR.
+AUTHOR = Sparq
+
 UPK_FILE = XComGame.upk
 
 // ------------------------------------------------------------
