@@ -1,11 +1,14 @@
 // ------------------------------------------------------------
 // XCOM: Enemy Within ultrawide UI and camera fixes
 //
-// - Fix screen-to-UI and UI-to-screen coordinate mapping
-// - Correct FOV to be Hor+ in both tactical and strategic screens
-// - Center modal dialogue box on ultrawide resolutions
-// - Stretch Headquarters top menu bar to full width on ultrawide resolutions
-// - Fix initial position top menu bar
+// - Main fixes:
+//   - Fix screen-to-UI and UI-to-screen coordinate mapping
+//   - Correct FOV to be Hor+ in both tactical and strategic screens
+// - UI tweaks:
+//   - Center modal dialogue box on ultrawide resolutions
+//   - Stretch Headquarters top menu bar to full width on ultrawide resolutions
+//   - Fix initial position top menu bar
+//   - Prevent Build Facility hologram stretching
 // - Retains support for sub-16:9 aspect ratios.
 // - Includes special uninstall handling to allow uninstall scripts to be properly generated.
 // - Tested with EW/LW/LWR.
@@ -13,6 +16,9 @@
 // Install using PatcherGUI: https://www.nexusmods.com/xcom/mods/448
 //
 // ------------------------------------------------------------
+// Changelog 3.1.0:
+// - Prevent Build Facility hologram stretching
+//
 // Changelog 3.0.0:
 // - Rewrote executable patcher code into PatchUPK patch file
 // - Reinstated original sub-16:9 aspect ratio support
@@ -517,3 +523,35 @@ OBJECT = UIStrategyHUD_FacilityMenu.OnFlashCommand : AUTO
 [#end]
 04 0B
 53
+
+// ------------------------------------------------------------
+// Preserve facility hologram and background proportions
+//
+// Stock drawing scales width by screen width and height by screen height,
+// stretching the materials when the screen aspect differs from 16:9.
+//
+//     UIWidth  = Min(SizeX, SizeY * (16.0 / 9.0))
+//     UIHeight = Min(SizeY, SizeX * (9.0 / 16.0))
+//     Width    = UIWidth  * NormSizeX
+//     Height   = UIHeight * NormSizeY
+//     X        = (SizeX - Width) * 0.5
+//
+//     BaseY = 20 + (SizeY - UIHeight) * 0.5
+//
+// Vertically center the fitted canvas on sub-16:9 screens. Draw the background
+// at BaseY and vertically center the facility image relative to it. Preserve the parent HUD draw, materials, UVs and visibility.
+// Fits ultrawide and sub-16:9 screens; 16:9 behavior remains unchanged.
+// ------------------------------------------------------------
+
+OBJECT = XComHQHUD.DrawHUD : AUTO
+[REPLACEMENT_CODE]
+1C <XComGame.XComHUD.DrawHUD> 16
+07 [@facility_end] 77 01 <@FacilityMIC> 2A 16
+19 01 <Engine.HUD.Canvas> [@] <NullRef> 00 ( 1C <Engine.Canvas.SetPos> AB AF 19 17 [@] <Engine.HUD.SizeX> 00 ( 01 <Engine.HUD.SizeX> ) AB F4 19 17 [@] <Engine.HUD.SizeX> 00 ( 01 <Engine.HUD.SizeX> ) AB 19 17 [@] <Engine.HUD.SizeY> 00 ( 01 <Engine.HUD.SizeY> ) 1E <%f 1.77777778> 16 16 01 <@FacilityBackgroundTextureNormSizeX> 16 16 1E <%f 0.5> 16 AE 1E <%f 20> AB AF 19 17 [@] <Engine.HUD.SizeY> 00 ( 01 <Engine.HUD.SizeY> ) F4 19 17 [@] <Engine.HUD.SizeY> 00 ( 01 <Engine.HUD.SizeY> ) AB 19 17 [@] <Engine.HUD.SizeX> 00 ( 01 <Engine.HUD.SizeX> ) 1E <%f 0.5625> 16 16 16 1E <%f 0.5> 16 16 4A 16 )
+19 01 <Engine.HUD.Canvas> [@] <NullRef> 00 ( 1C <Engine.Canvas.DrawMaterialTile> 01 <@FacilityBackgroundMaterial> AB F4 19 17 [@] <Engine.HUD.SizeX> 00 ( 01 <Engine.HUD.SizeX> ) AB 19 17 [@] <Engine.HUD.SizeY> 00 ( 01 <Engine.HUD.SizeY> ) 1E <%f 1.77777778> 16 16 01 <@FacilityBackgroundTextureNormSizeX> 16 AB F4 19 17 [@] <Engine.HUD.SizeY> 00 ( 01 <Engine.HUD.SizeY> ) AB 19 17 [@] <Engine.HUD.SizeX> 00 ( 01 <Engine.HUD.SizeX> ) 1E <%f 0.5625> 16 16 01 <@FacilityBackgroundTextureNormSizeY> 16 1E <%f 0> 1E <%f 0> 1E <%f 1> 1E <%f 1> 4A 16 )
+19 01 <Engine.HUD.Canvas> [@] <NullRef> 00 ( 1C <Engine.Canvas.SetPos> AB AF 19 17 [@] <Engine.HUD.SizeX> 00 ( 01 <Engine.HUD.SizeX> ) AB F4 19 17 [@] <Engine.HUD.SizeX> 00 ( 01 <Engine.HUD.SizeX> ) AB 19 17 [@] <Engine.HUD.SizeY> 00 ( 01 <Engine.HUD.SizeY> ) 1E <%f 1.77777778> 16 16 01 <@FacilityTextureNormSizeX> 16 16 1E <%f 0.5> 16 AE AB AB F4 19 17 [@] <Engine.HUD.SizeY> 00 ( 01 <Engine.HUD.SizeY> ) AB 19 17 [@] <Engine.HUD.SizeX> 00 ( 01 <Engine.HUD.SizeX> ) 1E <%f 0.5625> 16 16 AF 01 <@FacilityBackgroundTextureNormSizeY> 01 <@FacilityTextureNormSizeY> 16 16 1E <%f 0.5> 16 AE 1E <%f 20> AB AF 19 17 [@] <Engine.HUD.SizeY> 00 ( 01 <Engine.HUD.SizeY> ) F4 19 17 [@] <Engine.HUD.SizeY> 00 ( 01 <Engine.HUD.SizeY> ) AB 19 17 [@] <Engine.HUD.SizeX> 00 ( 01 <Engine.HUD.SizeX> ) 1E <%f 0.5625> 16 16 16 1E <%f 0.5> 16 16 16 4A 16 )
+19 01 <Engine.HUD.Canvas> [@] <NullRef> 00 ( 1C <Engine.Canvas.DrawMaterialTile> 01 <@FacilityMIC> AB F4 19 17 [@] <Engine.HUD.SizeX> 00 ( 01 <Engine.HUD.SizeX> ) AB 19 17 [@] <Engine.HUD.SizeY> 00 ( 01 <Engine.HUD.SizeY> ) 1E <%f 1.77777778> 16 16 01 <@FacilityTextureNormSizeX> 16 AB F4 19 17 [@] <Engine.HUD.SizeY> 00 ( 01 <Engine.HUD.SizeY> ) AB 19 17 [@] <Engine.HUD.SizeX> 00 ( 01 <Engine.HUD.SizeX> ) 1E <%f 0.5625> 16 16 01 <@FacilityTextureNormSizeY> 16 1E <%f 0> 1E <%f 0> 1E <%f 1> 1E <%f 1> 4A 16 )
+[#facility_end]
+04 0B
+53
+
