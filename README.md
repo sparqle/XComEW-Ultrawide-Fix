@@ -1,12 +1,5 @@
 # XCOM: Enemy Within Ultrawide Fix
 
-> [!IMPORTANT]
-> The application `XComEW-Ultrawide-Fix.exe` is no longer necessary. 
-> The complete ultrawide fix can now be installed using [PatcherGUI](https://www.nexusmods.com/xcom/mods/448) with just the file
-> [`mods/Ultrawide-resolution-fix.txt`](mods/Ultrawide-resolution-fix.txt). 
->
-> Together, these replace all ultrawide modifications performed by this executable, without needing to modify `XComEW.exe`.
-
 An ultrawide resolution fix for **XCOM: Enemy Within** and **Long War** to make it properly expand horizontally, turning it into a [Hor+](https://www.wsgf.org/article/screen-change) game.
 
 It addresses several visual and input problems at wide aspect ratios:
@@ -16,45 +9,15 @@ It addresses several visual and input problems at wide aspect ratios:
 - Camera is a bit too zoomed out when on missions or main screen.
 - The health bars and other hovering UI elements don't follow units.
 
-## Install (PatcherGUI)
+## Install 
 
 1. Close the game.
 2. Download and extract [PatcherGUI](https://www.nexusmods.com/xcom/mods/448).
-3. Download mode file: [`mods/Ultrawide-resolution-fix.txt`](mods/Ultrawide-resolution-fix.txt).
+3. Download and extract mod file [Ultrawide-resolution-fix.txt](https://github.com/sparqle/XComEW-Ultrawide-Fix/releases).
 4. Open PatcherGUI.
 5. Browse to your "XCom-Enemy-Unknown/XEW" directory.
 6. Browse to the mod file: `Ultrawide-resolution-fix.txt`
 7. Click **Apply** to install.
-
-## Install (legacy)
-
-> The legacy executable installation and restoration instructions below are retained for posterity.
-
-The installer will try to find your XCOM installation folder in the usual places. If it cannot find it, you need to 
-browse to your "XCom-Enemy-Unknown" directory (not the XEW directory inside it).
-
-1. Close the game.
-2. Extract the entire archive into a directory.
-3. Download and extract [PatcherGUI](https://www.nexusmods.com/xcom/mods/448) separately if you haven't already. 
-4. Run `XComEW-Ultrawide-Fix.exe` 
-5. Enter your `XCom-Enemy-Unknown` installation folder if needed.
-5. Set **UPK tools folder** to the extracted PatcherGUI directory.
-6. Click **Install** to install.
-
-It will binary patch `XComEW.exe` and use the PatchUPK from [UPKUtils](https://github.com/wghost/UPKUtils) to modify
-various UPK.
-
-## Restore
-
-If you want to restore the original game files after an installation. Or you can use Steam to restore the game files 
-to their original state.
-
-1. Close the game.
-2. Run `XComEW-Ultrawide-Fix.exe` and choose your `XCom-Enemy-Unknown` folder you previously installed in.
-5. Set **UPK tools folder** to the extracted PatcherGUI directory.
-4. Click **Restore** to restore.
-
-Restore reverses the binary patch of `XComEW.exe`, and will use PatchUPK to uninstall the earlier modified UPK files.
 
 ## Tested configurations
 
@@ -62,25 +25,8 @@ Tested at 3440x1440 in **XCOM: Enemy Within** and **Long War**, starting mission
 
 * Fixes are general, so should work for untested game screens as well.
 * Will probably work for other ultrawide or super ultrawide resolutions.
-* XCOM: Enemy Unknown not supported
-* Game still works fine on 16:9 resolutions.
-* Game will not work well on narrower aspect ratios such as 5:4 or 4:3.
-
-## Advanced menu
-
-**Advanced → Install EXE only**.
-This backs up and patches `XComEW.exe`, leaving UPK files unchanged. PatcherGUI and
-the **UPK tools folder** are not required for this option; This is useful if you want to manage these patches yourself in PatcherGUI.
-
-**Advanced → Restore EXE only**.
-Reverse the ultrawide patches in `XComEW.exe`, preserving unrelated executable edits.
-UPK files and their uninstall script are retained. No UPK tools are required.
-
-**Advanced → Disable Phone Home**.
-Replace the executable's `firaxis.com` or PatcherGUI's `yiraxis.com` address with `xcm.invalid`. 
-Because guess what? yiraxis.com exists nowadays. Unlike an unregistered `.com`, `.invalid` is 
-[reserved for invalid domain names](https://www.rfc-editor.org/rfc/rfc2606).
-This option requires no UPK tools and leaves UPK files unchanged.
+* XCOM: Enemy Unknown not supported (but it should be possible if there is interest)
+* Game still works fine on other aspect ratios, including narrow aspect ratios such as 5:4 or 4:3.
 
 ## What was borked
 
@@ -159,7 +105,6 @@ This is the closest UnrealScript
 function before we dive into compiled code. Because the original linear algorithm is still applied, we compensate for it in our logic.
 We also compensate for the map exclusions as we cannot disable them outright. We also retain support for the sub-16:9 aspect ratio.
 
-
 ### Smaller UI fixes
 
 A few UI elements were no longer positioned quite right in ultrawide resolutions, and have been adjusted to be more aesthetically pleasing:
@@ -168,6 +113,11 @@ A few UI elements were no longer positioned quite right in ultrawide resolutions
 * The Headquarters top menu bar didn't extend all the way across.
 * The Headquarters top menu bar wasn't immediately anchored to the right.
 * Build facility holograms were stretched/squashed in non-16:9 resolutions.
+
+## Legacy executable patcher
+
+The Windows UI application `XComEW-Ultrawide-Fix.exe` that this github source code builds is no longer necessary. 
+The legacy executable installation and restoration instructions can still be seen [here](README.patcher.md).
 
 ## License
 
