@@ -186,7 +186,7 @@ Many thanks to the following utilities that made this fix possible:
   this tool's interface.
 * [UE Explorer](https://github.com/UE-Explorer/UE-Explorer): For providing a way to show and search UnrealScript code
   inside UPK files.
-* [JPEX Decompiler](https://github.com/jindrapetrik/jpexs-decompiler): Used to inspect ScaleForm UI elements and to determine how to resize them.
+* [JPEXS Decompiler](https://github.com/jindrapetrik/jpexs-decompiler): Used to inspect ScaleForm UI elements and to determine how to resize them.
 * [Ghidra](https://github.com/nationalsecurityagency/ghidra): To decompile XCOM.exe assembly with, to find native
   functions mentioned in UPK files.
 * [dbg](https://github.com/x64dbg/x64dbg): To debug XCOM.exe live with, used to track down the completely internal
