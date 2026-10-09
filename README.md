@@ -167,6 +167,7 @@ A few UI elements were no longer positioned quite right in ultrawide resolutions
 * Dialogue window popup wasn't centered.
 * The Headquarters top menu bar didn't extend all the way across.
 * The Headquarters top menu bar wasn't immediately anchored to the right.
+* Build facility holograms were stretched/squashed in non-16:9 resolutions.
 
 ## License
 
@@ -180,11 +181,12 @@ Many thanks to the following utilities that made this fix possible:
 
 * [Nexus mods for XCOM](https://www.nexusmods.com/games/xcom): A great collection of mods and improvements, which
   showed that this fix was possible, and tools exist to do it.
-* [UPK Utils](https://github.com/wghost/UPKUtils): A great collection of tools for inspecting and modifying UPK files.
+* [UPK Utils](https://github.com/wghost/UPKUtils): An amazing collection of tools for inspecting and modifying UPK files.
 * [GUI Patcher](https://github.com/wghost/GUIPatcher): The GUI interface to apply UPK patches for XCOM, which inspired
   this tool's interface.
 * [UE Explorer](https://github.com/UE-Explorer/UE-Explorer): For providing a way to show and search UnrealScript code
   inside UPK files.
+* [JPEX Decompiler](https://github.com/jindrapetrik/jpexs-decompiler): Used to inspect ScaleForm UI elements and to determine how to resize them.
 * [Ghidra](https://github.com/nationalsecurityagency/ghidra): To decompile XCOM.exe assembly with, to find native
   functions mentioned in UPK files.
 * [dbg](https://github.com/x64dbg/x64dbg): To debug XCOM.exe live with, used to track down the completely internal
