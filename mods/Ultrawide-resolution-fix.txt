@@ -444,10 +444,10 @@ AB BE AB BD AB 35 <Core.Object.TPOV.FOV> <Core.Object.TPOV> 00 00 00 <.NewPOV> 1
 // which is wrong for ultrawide resolutions as the coordinate system is 1280x720 centered,
 // with negative values for x and y if wider.
 //
-// The fix is to replace the above with a static to the known coordinate system center:
+// The fix is to replace the above with the static coordinate system center:
 //
-//  this.bg._x = 1280 * 0.5 - 720 * 0.5;
-//  this.bg._y = 1280 * 0.5 - 720 * 0.5;
+//  this.bg._x = 1280 * 0.5;
+//  this.bg._y = 720 * 0.5;
 //
 // Other UI elements use anchors which properly take the resolution into account.
 // ------------------------------------------------------------
