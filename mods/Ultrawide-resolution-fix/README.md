@@ -1,6 +1,6 @@
 # XCOM: Enemy Within Ultrawide Fix
 
-An ultrawide resolution fix for **XCOM: Enemy Within**, **Long War** and **Long War Rebalanced** to make it properly expand horizontally, turning it into a [Hor+](https://www.wsgf.org/article/screen-change) game.
+An ultrawide resolution fix for **XCOM: Enemy Within**, **Long War** and **Long War Rebalance** to make it properly expand horizontally, turning it into a [Hor+](https://www.wsgf.org/article/screen-change) game.
 
 It addresses several visual and input problems at wide aspect ratios:
 
@@ -21,7 +21,7 @@ It addresses several visual and input problems at wide aspect ratios:
 
 ## Tested configurations
 
-Tested at 3440x1440 in **XCOM: Enemy Within**, **Long War** and **Long War Rebalanced**: starting missions and screens.
+Tested at 3440x1440 in **XCOM: Enemy Within**, **Long War** and **Long War Rebalance**: starting missions and screens.
 
 * Fixes are general, so should work for untested game screens as well.
 * Will probably work for other ultrawide or super ultrawide resolutions.
