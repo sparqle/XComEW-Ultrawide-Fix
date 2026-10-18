@@ -35,6 +35,7 @@ MOD_NAME = Ultrawide UI and camera fixes
 DESCRIPTION = Ultrawide UI and camera fixes to turn XCOM-EW into a Hor+ game. Tested on EW/LW/LWR.
 AUTHOR = Sparq
 
+
 // ------------------------------------------------------------
 // Fix screen-to-UI and UI-to-screen coordinate mapping
 //
@@ -196,6 +197,7 @@ OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 04 00 <.kPoint>
 04 3A <.ReturnValue>
 53
+
 
 // ------------------------------------------------------------
 // Replace Camera.DoUpdateCamera
@@ -467,6 +469,7 @@ OBJECT = gfxDialogueBox.DialogueBox
 [AFTER_HEX]
 96 07 00 08 4C 07 D0 02 00 00 4D 4D 4D 4D
 
+
 // ------------------------------------------------------------
 // Stretch Headquarters top menu bar to full width on ultrawide resolutions
 //
@@ -524,6 +527,7 @@ OBJECT = UIStrategyHUD_FacilityMenu.OnFlashCommand : AUTO
 04 0B
 53
 
+
 // ------------------------------------------------------------
 // Preserve facility hologram and background proportions
 //
@@ -554,4 +558,3 @@ OBJECT = XComHQHUD.DrawHUD : AUTO
 [#facility_end]
 04 0B
 53
-

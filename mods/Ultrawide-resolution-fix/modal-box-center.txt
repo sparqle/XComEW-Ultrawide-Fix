@@ -1,0 +1,33 @@
+// ------------------------------------------------------------
+// Center modal dialogue box on ultrawide resolutions.
+//
+// The DialogueBox.realise actionscript function does:
+//
+//  this.bg._x = Stage.width * 0.5;
+//  this.bg._y = Stage.height * 0.5;
+//
+// which is wrong for ultrawide resolutions as the coordinate system is 1280x720 centered,
+// with negative values for x and y if wider.
+//
+// The fix is to replace the above with the static coordinate system center:
+//
+//  this.bg._x = 1280 * 0.5;
+//  this.bg._y = 720 * 0.5;
+//
+// Other UI elements use anchors which properly take the resolution into account.
+// ------------------------------------------------------------
+
+UPK_FILE = UICollection_Common_SF.upk
+OBJECT = gfxDialogueBox.DialogueBox
+
+[BEFORE_HEX]
+96 04 00 08 49 08 4A 1C 96 02 00 08 4B 4E
+
+[AFTER_HEX]
+96 07 00 08 49 07 00 05 00 00 4D 4D 4D 4D
+
+[BEFORE_HEX]
+96 04 00 08 4C 08 4A 1C 96 02 00 08 4D 4E
+
+[AFTER_HEX]
+96 07 00 08 4C 07 D0 02 00 00 4D 4D 4D 4D

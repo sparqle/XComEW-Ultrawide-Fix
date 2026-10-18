@@ -1,0 +1,36 @@
+// ------------------------------------------------------------
+// XCOM: Enemy Within ultrawide UI and camera fixes
+//
+// - Main fixes:
+//   - Fix screen-to-UI and UI-to-screen coordinate mapping
+//   - Correct FOV to be Hor+ in both tactical and strategic screens
+// - UI tweaks:
+//   - Center modal dialogue box on ultrawide resolutions
+//   - Stretch Headquarters top menu bar to full width on ultrawide resolutions
+//   - Fix initial position top menu bar
+//   - Prevent Build Facility hologram stretching
+// - Retains support for sub-16:9 aspect ratios.
+// - Includes special uninstall handling to allow uninstall scripts to be properly generated.
+// - Tested with EW/LW/LWR.
+//
+// Install using PatcherGUI: https://www.nexusmods.com/xcom/mods/448
+//
+// ------------------------------------------------------------
+// Changelog 3.1.0:
+// - Prevent Build Facility hologram stretching
+//
+// Changelog 3.0.0:
+// - Rewrote executable patcher code into PatchUPK patch file
+// - Reinstated original sub-16:9 aspect ratio support
+//
+// Changelog 2.0.0:
+// - Rewrote executable patcher into C++
+// - Added UI aesthetic tweaks
+//
+// Changelog 1.1.0:
+// - Initial release
+// ------------------------------------------------------------
+
+MOD_NAME = Ultrawide UI and camera fixes
+DESCRIPTION = Ultrawide UI and camera fixes to turn XCOM-EW into a Hor+ game. Tested on EW/LW/LWR.
+AUTHOR = Sparq
