@@ -2,12 +2,15 @@ class SquadList extends Panel
 {
    var _parent;
    var _y;
+   var anchor;
    var help_display0;
    var help_display1;
    var help_icon0;
    var help_icon1;
+   var setAnchor;
    var unitBoxes;
    static var MAX_UNITS = 12;
+   var bUpdatingUnits = false;
    var currentSelection = -1;
    function SquadList()
    {
@@ -31,6 +34,10 @@ class SquadList extends Panel
    {
       this.setAnchor(this.anchor);
       this._y -= 25;
+      if(this._parent.RefreshCardLayout != undefined)
+      {
+         this._parent.RefreshCardLayout();
+      }
    }
    function OnChildMouseEvent(target, event)
    {
@@ -56,6 +63,17 @@ class SquadList extends Panel
       }
       return _loc3_;
    }
+   function clear()
+   {
+      this.bUpdatingUnits = true;
+      var i = 0;
+      while(i < this.unitBoxes.length)
+      {
+         this.unitBoxes[i].SetAddUnitText("","","");
+         this.unitBoxes[i].Hide();
+         i++;
+      }
+   }
    function SetUnitInfo(index, status, unitName, nickname, classText, classLabel, backpack, item1, item2, promo)
    {
       this.unitBoxes[index].setIndex(index);
@@ -75,6 +93,12 @@ class SquadList extends Panel
    }
    function SetSelected(targetIndex, forceRedrawIfPreviouslySelected)
    {
+      if(this.bUpdatingUnits)
+      {
+         this.bUpdatingUnits = false;
+         this._parent.scroll(0);
+         this._parent.QueueSquadScroll();
+      }
       if((targetIndex == undefined || this.currentSelection == targetIndex) && !forceRedrawIfPreviouslySelected)
       {
          return undefined;
@@ -97,14 +121,16 @@ class SquadList extends Panel
          this.currentSelection = targetIndex;
          _loc5_.onReceiveFocus();
          _loc5_.SetHelp(this.help_icon0,this.help_display0,this.help_icon1,this.help_display1);
-         _loc6_ = targetIndex - (3 + this._parent.offset);
+         var visibleCount = this._parent.GetVisibleCardCount();
+         var windowFirst = (SquadList.MAX_UNITS - visibleCount) / 2;
+         _loc6_ = targetIndex - (windowFirst + this._parent.offset);
          if(_loc6_ < 0)
          {
             this._parent.scroll(_loc6_);
          }
-         else if(_loc6_ > 5)
+         else if(_loc6_ > visibleCount - 1)
          {
-            this._parent.scroll(_loc6_ - 5);
+            this._parent.scroll(_loc6_ - (visibleCount - 1));
          }
       }
    }
