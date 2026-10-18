@@ -1,0 +1,160 @@
+// ------------------------------------------------------------
+// Update LWR hangar display to show eight 3D models, and fix unloading.
+//
+// - Extend existing XGFacility_Barracks.DEMOAddNewSoldiers to show 8 positions.
+// - Change logic to avoid maxing out 100k loops in one tick that causes UnreadEngine cut-off:
+//   - Move compaction from UISquadSelect_SquadList.UnloadSoldier to XGChooseSquadUI.OnUnloadSoldier
+//   - XGChooseSquadUI.OnUnloadSoldier defers/groups all 'UpdateView' redraws to new tick using UpdateView timer (0.05s).
+// ------------------------------------------------------------
+
+UPK_FILE = XComStrategyGame.upk
+OBJECT = XGFacility_Barracks.DEMOAddNewSoldiers : AUTO
+
+[REPLACEMENT_CODE]
+
+// Original LWR mapping: 11, 9, 7, 5, 3, 1, 0, 2, 4, 6, 8, 10.
+// The eight-position window uses entries 2 through 9.
+54 00 <.arrGenders> 2C 0C 16
+0F 10 2C 00 00 <.arrGenders> 24 0B
+0F 10 2C 01 00 <.arrGenders> 24 09
+0F 10 2C 02 00 <.arrGenders> 24 07
+0F 10 2C 03 00 <.arrGenders> 24 05
+0F 10 2C 04 00 <.arrGenders> 24 03
+0F 10 2C 05 00 <.arrGenders> 24 01
+0F 10 2C 06 00 <.arrGenders> 24 00
+0F 10 2C 07 00 <.arrGenders> 24 02
+0F 10 2C 08 00 <.arrGenders> 24 04
+0F 10 2C 09 00 <.arrGenders> 24 06
+0F 10 2C 0A 00 <.arrGenders> 24 08
+0F 10 2C 0B 00 <.arrGenders> 24 0A
+
+// Preserve the original cycling command handling and sound.
+07 [@play_sound] 97 00 <.iNumSoldiers> 2C F0 16
+    0F 00 <.iNumSoldiers> 93 00 <.iNumSoldiers> 1D <%i 256> 16
+    06 [@remember_offset]
+
+[#play_sound]
+1C <Engine.Actor.PlaySound> 20 <SoundUI.MenuSelectCue> 27 4A 4A 4A 4A 16
+
+[#remember_offset]
+07 [@restore_offset] 9B 00 <.iNumSoldiers> 2C 80 16
+    0F 01 <@m_iHighestPsiRank> 00 <.iNumSoldiers>
+    06 [@clear_begin]
+
+[#restore_offset]
+0F 00 <.iNumSoldiers> 01 <@m_iHighestPsiRank>
+
+// Remove all assigned soldiers from the displayed lineup.
+[#clear_begin]
+0F 00 <.I> 25
+
+[#clear_loop]
+07 [@display_begin] 96 00 <.I> 36 19 19 1B <HANGAR> 16 [@] <XGFacility_Hangar.m_kSkyranger> 00 ( 01 <XGFacility_Hangar.m_kSkyranger> ) [@] <XGShip_Dropship.m_arrSoldiers> 00 ( 01 <XGShip_Dropship.m_arrSoldiers> ) 16
+
+    0F 00 <.kSoldier> 10 00 <.I> 19 19 1B <HANGAR> 16 [@] <XGFacility_Hangar.m_kSkyranger> 00 ( 01 <XGFacility_Hangar.m_kSkyranger> ) [@] <XGShip_Dropship.m_arrSoldiers> 00 ( 01 <XGShip_Dropship.m_arrSoldiers> )
+
+    07 [@clear_next] 77 00 <.kSoldier> 2A 16
+        19 00 <.kSoldier> [@] <NullRef> 00 ( 1B <SetHQLocation> 25 4A 4A 4A 16 )
+
+[#clear_next]
+A5 00 <.I> 16
+06 [@clear_loop]
+
+// Display eight positions instead of six.
+[#display_begin]
+0F 00 <.I> 2C 02
+
+[#display_loop]
+07 [@done] 96 00 <.I> 2C 0A 16
+
+    // Validate I + cycling offset before indexing arrGenders.
+    07 [@display_next] 99 92 00 <.I> 00 <.iNumSoldiers> 16 25 16
+    07 [@display_next] 96 92 00 <.I> 00 <.iNumSoldiers> 16 2C 0C 16
+
+    // Validate the mapped dropship index.
+    07 [@display_next] 99 38 3A 10 92 00 <.I> 00 <.iNumSoldiers> 16 00 <.arrGenders> 25 16
+
+    07 [@display_next] 96 38 3A 10 92 00 <.I> 00 <.iNumSoldiers> 16 00 <.arrGenders> 36 19 19 1B <HANGAR> 16 [@] <XGFacility_Hangar.m_kSkyranger> 00 ( 01 <XGFacility_Hangar.m_kSkyranger> ) [@] <XGShip_Dropship.m_arrSoldiers> 00 ( 01 <XGShip_Dropship.m_arrSoldiers> ) 16
+
+    0F 00 <.kSoldier> 10 38 3A 10 92 00 <.I> 00 <.iNumSoldiers> 16 00 <.arrGenders> 19 19 1B <HANGAR> 16 [@] <XGFacility_Hangar.m_kSkyranger> 00 ( 01 <XGFacility_Hangar.m_kSkyranger> ) [@] <XGShip_Dropship.m_arrSoldiers> 00 ( 01 <XGShip_Dropship.m_arrSoldiers> )
+
+    07 [@display_next] 77 00 <.kSoldier> 2A 16
+
+    // Original direct destination mapping; no special swap of slots 6/7.
+    // Target order: 7, 5, 3, 1, 0, 2, 4, 6.
+    19 00 <.kSoldier> [@] <NullRef> 00 ( 1B <SetHQLocation> 26 4A 38 3A 10 00 <.I> 00 <.arrGenders> 4A 16 )
+
+[#display_next]
+A5 00 <.I> 16
+06 [@display_loop]
+
+[#done]
+04 0B
+53
+
+OBJECT = UISquadSelect_SquadList.UnloadSoldier : AUTO
+[REPLACEMENT_CODE]
+
+07 [@done] 81 2D 01 <@m_bInSoldierView> 16
+
+// Original tutorial restriction.
+07 [@try_unload] 82 19 19 2E <Class.UISquadSelect> 01 <XComGame.UI_FxsPanel.screen> [@] <UISquadSelect.GetMgr.ReturnValue> 00 ( 1B <GetMgr> 16 ) [@] <XGStrategyActorNativeBase.ISCONTROLLED.ReturnValue> 00 ( 1B <ISCONTROLLED> 16 ) 18 [@] ( 96 19 19 19 2E <Class.UISquadSelect> 01 <XComGame.UI_FxsPanel.screen> [@] <UISquadSelect.GetMgr.ReturnValue> 00 ( 1B <GetMgr> 16 ) [@] <XGStrategyActorNativeBase.Game.ReturnValue> 00 ( 1B <Game> 16 ) [@] <XGStrategy.GetNumMissionsTaken.ReturnValue> 00 ( 1B <GetNumMissionsTaken> 4A 16 ) 2C 02 16 16 )
+    04 0B
+
+[#try_unload]
+07 [@done] 19 19 2E <Class.UISquadSelect> 01 <XComGame.UI_FxsPanel.screen> [@] <UISquadSelect.GetMgr.ReturnValue> 00 ( 1B <GetMgr> 16 ) [@] <XGChooseSquadUI.OnUnloadSoldier.ReturnValue> 00 ( 1B <OnUnloadSoldier> 35 <UISquadSelect_SquadList.UISquadList_UnitBox.iIndex> <@UISquadList_UnitBox> 00 00 10 01 <@m_iCurrentSelection> 01 <@m_arrUIOptions> 35 <UISquadSelect_SquadList.UISquadList_UnitBox.iIndex> <@UISquadList_UnitBox> 00 00 10 01 <@m_iCurrentSelection> 01 <@m_arrUIOptions> 16 )
+
+// Compaction is handled inside the manager, before these UI/data refreshes.
+19 19 2E <Class.UISquadSelect> 01 <XComGame.UI_FxsPanel.screen> [@] <UISquadSelect.GetMgr.ReturnValue> 00 ( 1B <GetMgr> 16 ) [@] <NullRef> 00 ( 1B <UpdateSquad> 16 )
+0F 01 <@m_iMaxSlots> 19 19 19 19 2E <Class.UISquadSelect> 01 <XComGame.UI_FxsPanel.screen> [@] <UISquadSelect.GetMgr.ReturnValue> 00 ( 1B <GetMgr> 16 ) [@] <XGChooseSquadUI.m_kMission> 00 ( 01 <XGChooseSquadUI.m_kMission> ) [@] <XGMission.GetAssignedSkyranger.ReturnValue> 00 ( 1B <GetAssignedSkyranger> 16 ) [@] <XGShip_Dropship.GetCapacity.ReturnValue> 00 ( 1B <GetCapacity> 16 )
+19 2E <Class.UISquadSelect> 01 <XComGame.UI_FxsPanel.screen> [@] <NullRef> 00 ( 1B <UpdateButtonHelp> 16 )
+1B <UpdateData> 16
+
+[#done]
+04 0B
+53
+
+
+// Manager: compact if capacity requires it, then schedule the 3D rebuild separately.
+OBJECT = XGChooseSquadUI.OnUnloadSoldier : AUTO
+[REPLACEMENT_CODE]
+
+0F 00 <.kSkyranger> 19 01 <@m_kMission> [@] <XGMission.GetAssignedSkyranger.ReturnValue> 00 ( 1B <GetAssignedSkyranger> 16 )
+
+07 [@failed] 77 00 <.kSkyranger> 2A 16
+07 [@failed] 82 99 00 <.iSoldier> 25 16 18 [@] ( 96 00 <.iSoldier> 36 19 00 <.kSkyranger> [@] <XGShip_Dropship.m_arrSoldiers> 00 ( 01 <XGShip_Dropship.m_arrSoldiers> ) 16 16 )
+
+// A valid array index may still contain an empty slot.
+07 [@failed] 77 10 00 <.iSoldier> 19 00 <.kSkyranger> [@] <XGShip_Dropship.m_arrSoldiers> 00 ( 01 <XGShip_Dropship.m_arrSoldiers> ) 2A 16
+
+// Preserve the original protected-soldier check.
+07 [@unload] 9A 35 <XComGame.XGTacticalGameCoreNativeBase.TSoldier.iPsiRank> <XComGame.XGTacticalGameCoreNativeBase.TSoldier> 00 00 19 10 00 <.iSoldier> 19 00 <.kSkyranger> [@] <XGShip_Dropship.m_arrSoldiers> 00 ( 01 <XGShip_Dropship.m_arrSoldiers> ) [@] <XGStrategySoldier.m_kSoldier> 00 ( 01 <XGStrategySoldier.m_kSoldier> ) 2C 07 16
+    1B <PlayBadSound> 16
+    04 28
+
+[#unload]
+07 [@unload_succeeded] 81 19 1B <BARRACKS> 16 [@] <XGFacility_Barracks.UnloadSoldierFromSlot.ReturnValue> 00 ( 1B <UnloadSoldierFromSlot> 10 00 <.iSoldier> 19 00 <.kSkyranger> [@] <XGShip_Dropship.m_arrSoldiers> 00 ( 01 <XGShip_Dropship.m_arrSoldiers> ) 00 <.SlotIdx> 00 <.kSkyranger> 16 ) 16
+    1B <PlayBadSound> 16
+    04 28
+
+[#unload_succeeded]
+// Restore the original LWR trigger: capacity smaller than the array's slot extent.
+// Run before refreshing loadouts/cards so they receive the new dropship indices.
+07 [@refresh] 96 19 00 <.kSkyranger> [@] <XGShip_Dropship.GetCapacity.ReturnValue> 00 ( 1B <GetCapacity> 16 ) 36 19 00 <.kSkyranger> [@] <XGShip_Dropship.m_arrSoldiers> 00 ( 01 <XGShip_Dropship.m_arrSoldiers> ) 16
+    19 1B <BARRACKS> 16 [@] <NullRef> 00 ( 1B <RemoveNoneSoldiersFromDropship> 00 <.kSkyranger> 16 )
+    // SetTimer(0.05, false, 'UpdateView'): one-shot callback on this manager.
+    // Uses Actor.SetTimer's indexed native, as used elsewhere in this package.
+    // Re-setting the same named timer coalesces multiple pending requests.
+    61 18 1E <%f 0.05> 28 21 <UpdateView> 4A 16
+
+[#refresh]
+// Always refresh data/launch eligibility immediately, but do not synchronously
+// call UpdateView/DEMOAddNewSoldiers from this removal stack.
+1B <UpdateSquad> 16
+1B <UpdateLaunchButton> 16
+04 27
+
+[#failed]
+04 28
+04 3A <.ReturnValue>
+53

@@ -1,0 +1,12 @@
+// ------------------------------------------------------------
+// Add 2 new slots for to matinee animation for a total of 8 slots
+//
+// Scene slot 6: Position (-1867.711, -228.906, 159.36083984375), Euler heading -334 degrees.
+// Scene slot 7: Position (-1410.795, -374.404, 159.36083984375), Euler heading -272 degrees.
+//
+// - Includes the separate timelines for: Soldiers, SHIVs, MECs and MEC Troopers.
+// - Copies original timelines from slots 0 and 1
+// - For soldier timeline the animation is delays 2 and 4 seconds to avoid synced up nose picking.
+// ------------------------------------------------------------
+
+UPK_FILE = Anim_Hangar.upk

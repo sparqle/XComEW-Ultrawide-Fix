@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "files": [
+    "header.txt",
+    "assign-new-animation-slots.txt",
+    "extend-ui.txt",
+    "extend-animation-header.txt",
+    "extend-animation-soldier.txt",
+    "extend-animation-shiv.txt",
+    "extend-animation-mec.txt",
+    "extend-animation-mec-trooper.txt",
+    "extend-animation-footer.txt",
+  ]
+}
