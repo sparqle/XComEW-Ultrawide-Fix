@@ -1,0 +1,334 @@
+// ------------------------------------------------------------
+// PHASE 1 - Complete header/table growth before relocating existing objects.
+// Preserve the source order of all eight names and forty exports.
+//
+// Add entries for all Soldiers, SHIVs, MECs and MEC Troopers.
+// ------------------------------------------------------------
+
+// ------------------------------------------------------------
+// New Soldier groups:
+// - InterpGroup_26 copies Soldier01 (original InterpGroup_0)
+// - InterpGroup_27 copies Soldier02 (original InterpGroup_2)
+// - SeqVar_Object_72/73 expose Unit6/Unit7
+// - SeqVar_Named_54/55 resolve those names
+//
+// - Use new slot 6/7 positions and headings
+// - Soldier07's sequence is delayed 2 seconds; Soldier08's later keys 4 seconds
+// - Soldier08 keeps its negative-time opening idle and loops it to avoid a gap
+// ------------------------------------------------------------
+
+[ADD_NAME_ENTRY]
+0A 00 00 00 53 6F 6C 64 69 65 72 30 37 00 00 00 00 00 10 00 07 00
+
+
+[ADD_NAME_ENTRY]
+0A 00 00 00 53 6F 6C 64 69 65 72 30 38 00 00 00 00 00 10 00 07 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_26
+[ADD_EXPORT_ENTRY]
+E8 FF FF FF 00 00 00 00 E8 00 00 00 78 02 00 00 1B 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 94 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_26.InterpTrackMove_0
+[ADD_EXPORT_ENTRY]
+E5 FF FF FF 00 00 00 00 1C 08 00 00 80 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 98 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_26.InterpTrackAnimControl_0
+[ADD_EXPORT_ENTRY]
+E7 FF FF FF 00 00 00 00 1C 08 00 00 7E 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 AB 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Named_54
+[ADD_EXPORT_ENTRY]
+A9 FF FF FF 00 00 00 00 1A 07 00 00 91 04 00 00 37 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 B8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Object_72
+[ADD_EXPORT_ENTRY]
+A8 FF FF FF 00 00 00 00 1A 07 00 00 92 04 00 00 49 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 9C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_27
+[ADD_EXPORT_ENTRY]
+E8 FF FF FF 00 00 00 00 E8 00 00 00 78 02 00 00 1C 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 94 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_27.InterpTrackMove_0
+[ADD_EXPORT_ENTRY]
+E5 FF FF FF 00 00 00 00 21 08 00 00 80 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 98 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_27.InterpTrackAnimControl_0
+[ADD_EXPORT_ENTRY]
+E7 FF FF FF 00 00 00 00 21 08 00 00 7E 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 CB 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Named_55
+[ADD_EXPORT_ENTRY]
+A9 FF FF FF 00 00 00 00 1A 07 00 00 91 04 00 00 38 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 B8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Object_73
+[ADD_EXPORT_ENTRY]
+A8 FF FF FF 00 00 00 00 1A 07 00 00 92 04 00 00 4A 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 9C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// ------------------------------------------------------------
+// New SHIV groups:
+// - InterpGroup_28 copies Shiv1 (original InterpGroup_21)
+// - InterpGroup_29 copies Shiv2 (original InterpGroup_12)
+// - SeqVar_Object_74/75 expose Shiv6/Shiv7
+// - SeqVar_Named_56/57 resolve those names
+//
+// - Use new slot 6/7 positions and headings
+// ------------------------------------------------------------
+
+[ADD_NAME_ENTRY]
+06 00 00 00 53 68 69 76 37 00 00 00 00 00 10 00 07 00
+
+
+[ADD_NAME_ENTRY]
+06 00 00 00 53 68 69 76 38 00 00 00 00 00 10 00 07 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_28
+[ADD_EXPORT_ENTRY]
+E8 FF FF FF 00 00 00 00 E8 00 00 00 78 02 00 00 1D 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 74 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_28.InterpTrackMove_0
+[ADD_EXPORT_ENTRY]
+E5 FF FF FF 00 00 00 00 26 08 00 00 80 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 98 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_28.InterpTrackFloatProp_0
+[ADD_EXPORT_ENTRY]
+E6 FF FF FF 00 00 00 00 26 08 00 00 7F 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 E2 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Object_74
+[ADD_EXPORT_ENTRY]
+A8 FF FF FF 00 00 00 00 1A 07 00 00 92 04 00 00 4B 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 9C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Named_56
+[ADD_EXPORT_ENTRY]
+A9 FF FF FF 00 00 00 00 1A 07 00 00 91 04 00 00 39 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 B8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_29
+[ADD_EXPORT_ENTRY]
+E8 FF FF FF 00 00 00 00 E8 00 00 00 78 02 00 00 1E 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 74 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_29.InterpTrackMove_0
+[ADD_EXPORT_ENTRY]
+E5 FF FF FF 00 00 00 00 2B 08 00 00 80 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 98 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_29.InterpTrackFloatProp_0
+[ADD_EXPORT_ENTRY]
+E6 FF FF FF 00 00 00 00 2B 08 00 00 7F 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 E2 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Object_75
+[ADD_EXPORT_ENTRY]
+A8 FF FF FF 00 00 00 00 1A 07 00 00 92 04 00 00 4C 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 9C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Named_57
+[ADD_EXPORT_ENTRY]
+A9 FF FF FF 00 00 00 00 1A 07 00 00 91 04 00 00 3A 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 B8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// ------------------------------------------------------------
+// New MEC groups:
+// - InterpGroup_30 copies Mec1 (original InterpGroup_7)
+// - InterpGroup_31 copies Mec2 (original InterpGroup_8)
+// - SeqVar_Object_76/77 expose Mec6/Mec7
+// - SeqVar_Named_58/59 resolve those names
+//
+// - Use new slot 6/7 positions and headings
+// ------------------------------------------------------------
+
+[ADD_NAME_ENTRY]
+05 00 00 00 4D 65 63 37 00 00 00 00 00 10 00 07 00
+
+[ADD_NAME_ENTRY]
+05 00 00 00 4D 65 63 38 00 00 00 00 00 10 00 07 00
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_30
+[ADD_EXPORT_ENTRY]
+E8 FF FF FF 00 00 00 00 E8 00 00 00 78 02 00 00 1F 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 94 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_30.InterpTrackAnimControl_0
+[ADD_EXPORT_ENTRY]
+E7 FF FF FF 00 00 00 00 30 08 00 00 7E 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 35 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_30.InterpTrackMove_0
+[ADD_EXPORT_ENTRY]
+E5 FF FF FF 00 00 00 00 30 08 00 00 80 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 98 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Object_76
+[ADD_EXPORT_ENTRY]
+A8 FF FF FF 00 00 00 00 1A 07 00 00 92 04 00 00 4D 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 9C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Named_58
+[ADD_EXPORT_ENTRY]
+A9 FF FF FF 00 00 00 00 1A 07 00 00 91 04 00 00 3B 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 B8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_31
+[ADD_EXPORT_ENTRY]
+E8 FF FF FF 00 00 00 00 E8 00 00 00 78 02 00 00 20 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 94 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_31.InterpTrackMove_0
+[ADD_EXPORT_ENTRY]
+E5 FF FF FF 00 00 00 00 35 08 00 00 80 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 98 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_31.InterpTrackAnimControl_0
+[ADD_EXPORT_ENTRY]
+E7 FF FF FF 00 00 00 00 35 08 00 00 7E 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 75 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Object_77
+[ADD_EXPORT_ENTRY]
+A8 FF FF FF 00 00 00 00 1A 07 00 00 92 04 00 00 4E 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 9C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Named_59
+[ADD_EXPORT_ENTRY]
+A9 FF FF FF 00 00 00 00 1A 07 00 00 91 04 00 00 3C 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 B8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// ------------------------------------------------------------
+// New MEC Trooper groups:
+// - InterpGroup_32 copies MecTrooper1 (original InterpGroup_15)
+// - InterpGroup_33 copies MecTrooper2 (original InterpGroup_16)
+// - SeqVar_Object_78/79 expose MecTrooper6/MecTrooper7
+// - SeqVar_Named_60/61 resolve those names
+//
+// - Use new slot 6/7 positions and headings
+// ------------------------------------------------------------
+
+[ADD_NAME_ENTRY]
+0C 00 00 00 4D 65 63 54 72 6F 6F 70 65 72 37 00 00 00 00 00 10 00 07 00
+
+[ADD_NAME_ENTRY]
+0C 00 00 00 4D 65 63 54 72 6F 6F 70 65 72 38 00 00 00 00 00 10 00 07 00
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_32
+[ADD_EXPORT_ENTRY]
+E8 FF FF FF 00 00 00 00 E8 00 00 00 78 02 00 00 21 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 AD 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_32.InterpTrackAnimControl_0
+[ADD_EXPORT_ENTRY]
+E7 FF FF FF 00 00 00 00 3A 08 00 00 7E 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 64 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_32.InterpTrackMove_0
+[ADD_EXPORT_ENTRY]
+E5 FF FF FF 00 00 00 00 3A 08 00 00 80 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 98 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Object_78
+[ADD_EXPORT_ENTRY]
+A8 FF FF FF 00 00 00 00 1A 07 00 00 92 04 00 00 4F 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 9C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Named_60
+[ADD_EXPORT_ENTRY]
+A9 FF FF FF 00 00 00 00 1A 07 00 00 91 04 00 00 3D 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 B8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_33
+[ADD_EXPORT_ENTRY]
+E8 FF FF FF 00 00 00 00 E8 00 00 00 78 02 00 00 22 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 94 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_33.InterpTrackAnimControl_0
+[ADD_EXPORT_ENTRY]
+E7 FF FF FF 00 00 00 00 3F 08 00 00 7E 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 80 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.InterpData_1.InterpGroup_33.InterpTrackMove_0
+[ADD_EXPORT_ENTRY]
+E5 FF FF FF 00 00 00 00 3F 08 00 00 80 02 00 00 01 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 98 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Object_79
+[ADD_EXPORT_ENTRY]
+A8 FF FF FF 00 00 00 00 1A 07 00 00 92 04 00 00 50 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 9C 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+// TheWorld.PersistentLevel.Main_Sequence.SeqVar_Named_61
+[ADD_EXPORT_ENTRY]
+A9 FF FF FF 00 00 00 00 1A 07 00 00 91 04 00 00 3E 00 00 00 00 00 00 00
+00 00 00 00 01 00 07 00 B8 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00

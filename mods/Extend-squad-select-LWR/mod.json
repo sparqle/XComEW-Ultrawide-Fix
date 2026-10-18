@@ -4,11 +4,9 @@
     "patches/header.txt",
     "patches/assign-new-animation-slots.txt",
     "patches/extend-ui.txt",
-    "patches/extend-animation-header.txt",
-    "patches/extend-animation-soldier.txt",
-    "patches/extend-animation-shiv.txt",
-    "patches/extend-animation-mec.txt",
-    "patches/extend-animation-mec-trooper.txt",
-    "patches/extend-animation-footer.txt"
+    "patches/animation-0-header.txt",
+    "patches/animation-1-add-entries.txt",
+    "patches/animation-2-add-objects.txt",
+    "patches/animation-3-edit-objects.txt"
   ]
 }
