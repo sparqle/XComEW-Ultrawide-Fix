@@ -45,7 +45,7 @@ foreach ($modDirectory in Get-ChildItem -LiteralPath $modsDirectory -Directory |
         [System.IO.File]::ReadAllText($sourcePath, $utf8).Trim([char[]]"`r`n")
     }
 
-    $outputPath = Join-Path $modsDirectory ($modDirectory.Name + '.txt')
+    $outputPath = Join-Path $modDirectory.FullName ($modDirectory.Name + '.txt')
     # Insert two blank line between trimmed fragments.
     [System.IO.File]::WriteAllText($outputPath, ($parts -join "`r`n`r`n`r`n"), $utf8)
 

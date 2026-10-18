@@ -1,14 +1,14 @@
 {
   "version": "1.0.0",
   "files": [
-    "header.txt",
-    "assign-new-animation-slots.txt",
-    "extend-ui.txt",
-    "extend-animation-header.txt",
-    "extend-animation-soldier.txt",
-    "extend-animation-shiv.txt",
-    "extend-animation-mec.txt",
-    "extend-animation-mec-trooper.txt",
-    "extend-animation-footer.txt"
+    "patches/header.txt",
+    "patches/assign-new-animation-slots.txt",
+    "patches/extend-ui.txt",
+    "patches/extend-animation-header.txt",
+    "patches/extend-animation-soldier.txt",
+    "patches/extend-animation-shiv.txt",
+    "patches/extend-animation-mec.txt",
+    "patches/extend-animation-mec-trooper.txt",
+    "patches/extend-animation-footer.txt"
   ]
 }

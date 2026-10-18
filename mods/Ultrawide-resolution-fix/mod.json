@@ -1,11 +1,11 @@
 {
   "version": "3.1.0",
   "files": [
-    "header.txt",
-    "ui-coord-mapping.txt",
-    "fix-fov.txt",
-    "modal-box-center.txt",
-    "extend-menu-bar.txt",
-    "fix-facility-hologram.txt"
+    "patches/header.txt",
+    "patches/ui-coord-mapping.txt",
+    "patches/fix-fov.txt",
+    "patches/modal-box-center.txt",
+    "patches/extend-menu-bar.txt",
+    "patches/fix-facility-hologram.txt"
   ]
 }
