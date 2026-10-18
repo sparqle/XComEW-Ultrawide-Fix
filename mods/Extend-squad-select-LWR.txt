@@ -6,7 +6,7 @@
 // - In ultrawide resolutions 8 squad members can be edited at once
 // - Small fix for odd-numbered capacity showing a stale card
 //
-// Required Long War Rebalanced: https://www.nexusmods.com/xcom/mods/686
+// Requires Long War Rebalanced: https://www.nexusmods.com/xcom/mods/686
 // Install using PatcherGUI: https://www.nexusmods.com/xcom/mods/448
 //
 // ------------------------------------------------------------
