@@ -1,8 +1,8 @@
 # XCOM: Enemy Within - Show eight soldiers in squad select screen (LWR)
 
-Show eight squad members at once in the hangar for **Long War Rebalance**. 
+Show eight squad members at once in the hangar for **Long War Rebalance**, and allow editing them all at once 
+on ultrawide resolutions.
 
-* In ultrawide resolutions all 8 members can be geared at once.
 * Shows 8 squad members on 16:9, just half offscreen as an indication that they are there.
 * Still supports larger squad sizes using arrow buttons.
 * Fixes an existing small UI bug on odd capacity sizes.
@@ -11,8 +11,9 @@ Show eight squad members at once in the hangar for **Long War Rebalance**.
 
 1. Close the game.
 2. Confirm you have [Long War Rebalance](https://www.nexusmods.com/xcom/mods/686) installed.
+2. Confirm you have [Ultrawide resolution fix](https://www.nexusmods.com/xcom/mods/892) installed.
 3. Download and extract [PatcherGUI](https://www.nexusmods.com/xcom/mods/448).
-4. Download and extract mod file [Extend-squad-select-LWR](https://github.com/sparqle/XComEW-Ultrawide-Fix/releases).
+4. Download and extract mod file [Extend-squad-select-LWR](https://www.nexusmods.com/games/xcom/mods/894).
 5. Open PatcherGUI.
 6. Browse to your "XCom-Enemy-Unknown/XEW" directory.
 7. Browse to the mod file: `Extend-squad-select-LWR`
