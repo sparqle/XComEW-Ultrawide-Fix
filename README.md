@@ -114,11 +114,6 @@ A few UI elements were no longer positioned quite right in ultrawide resolutions
 * The Headquarters top menu bar wasn't immediately anchored to the right.
 * Build facility holograms were stretched/squashed in non-16:9 resolutions.
 
-## Legacy executable patcher
-
-The Windows UI application `XComEW-Ultrawide-Fix.exe` that this github source code builds is no longer necessary. 
-The legacy executable installation and restoration instructions can still be seen [here](README.patcher.md).
-
 ## License
 
 This project's original code and documentation are available under the [MIT license](LICENSE).
