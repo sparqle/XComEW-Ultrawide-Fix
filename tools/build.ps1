@@ -38,9 +38,9 @@ foreach ($modDirectory in Get-ChildItem -LiteralPath $modsDirectory -Directory |
             throw "Expected a .txt file name in $manifestPath"
         }
         $sourcePath = [System.IO.Path]::GetFullPath((Join-Path $modDirectory.FullName $file))
-        $sourceRoot = $modDirectory.FullName + [System.IO.Path]::DirectorySeparatorChar
+        $sourceRoot = $modsDirectory + [System.IO.Path]::DirectorySeparatorChar
         if (-not $sourcePath.StartsWith($sourceRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-            throw "Source file must be inside $($modDirectory.FullName): $file"
+            throw "Source file must be inside ${modsDirectory}: $file"
         }
         [System.IO.File]::ReadAllText($sourcePath, $utf8).Trim([char[]]"`r`n")
     }
