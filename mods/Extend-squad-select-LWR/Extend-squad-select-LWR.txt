@@ -25,9 +25,6 @@ AUTHOR = Sparq
 // Update LWR hangar display to show eight 3D models, and fix unloading.
 //
 // - Extend existing XGFacility_Barracks.DEMOAddNewSoldiers to show 8 positions.
-// - Change logic to avoid maxing out 100k loops in one tick that causes UnreadEngine cut-off:
-//   - Move compaction from UISquadSelect_SquadList.UnloadSoldier to XGChooseSquadUI.OnUnloadSoldier
-//   - XGChooseSquadUI.OnUnloadSoldier defers/groups all 'UpdateView' redraws to new tick using UpdateView timer (0.05s).
 // ------------------------------------------------------------
 
 UPK_FILE = XComStrategyGame.upk
@@ -114,6 +111,14 @@ A5 00 <.I> 16
 [#done]
 04 0B
 53
+
+
+// ------------------------------------------------------------
+// Change logic to avoid maxing out 100k loops in one tick that causes UnreadEngine cut-off
+//
+// - Move compaction from UISquadSelect_SquadList.UnloadSoldier to XGChooseSquadUI.OnUnloadSoldier
+// - XGChooseSquadUI.OnUnloadSoldier defers/groups all 'UpdateView' redraws to new tick using UpdateView timer (0.05s).
+// ------------------------------------------------------------
 
 OBJECT = UISquadSelect_SquadList.UnloadSoldier : AUTO
 [REPLACEMENT_CODE]

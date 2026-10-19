@@ -2,11 +2,12 @@
   "version": "1.0.0",
   "files": [
     "patches/header.txt",
-    "patches/assign-new-animation-slots.txt",
-    "patches/extend-ui.txt",
-    "patches/animation-0-header.txt",
-    "patches/animation-1-add-entries.txt",
-    "patches/animation-2-add-objects.txt",
-    "patches/animation-3-edit-objects.txt"
+    "../shared/squad-select/assign-new-animation-slots.txt",
+    "patches/fix-soldier-unload-redraw.txt",
+    "../shared/squad-select/extend-ui.txt",
+    "../shared/squad-select/animation-0-header.txt",
+    "../shared/squad-select/animation-1-add-entries.txt",
+    "../shared/squad-select/animation-2-add-objects.txt",
+    "../shared/squad-select/animation-3-edit-objects.txt"
   ]
 }
