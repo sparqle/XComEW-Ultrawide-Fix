@@ -4,7 +4,6 @@ The code for two mods I made to improve ultrawide support in X-COM: Enemy Within
 
 ## Ultrawide resolution fix
 
-
 An ultrawide resolution fix for **XCOM: Enemy Within**, **Long War** and **Long War Rebalance** to make it properly expand horizontally, turning it into a [Hor+](https://www.wsgf.org/article/screen-change) game.
 
 It addresses several visual and input problems at wide aspect ratios:
@@ -17,16 +16,16 @@ It addresses several visual and input problems at wide aspect ratios:
 Read [documentation and installation](mods/Ultrawide-resolution-fix/README.md) or download from [Nexus Mods](https://www.nexusmods.com/xcom/mods/892).
 
 
-## Extend squad select screen for Long War Rebalance
+## Extend squad select screen for (LW 1.0 and LWR only)
 
-Show eight squad members at once in the hangar for **Long War Rebalance**.
+Show eight squad members at once in the hangar **Long War 1.0** and **Long War Rebalance**.
 
 * In ultrawide resolutions all 8 members can be geared at once.
 * Shows 8 squad members on 16:9, just half offscreen as an indication that they are there.
 * Still supports larger squad sizes using arrow buttons.
 * Fixes an existing small UI bug on odd capacity sizes.
 
-Read [documentation and installation](mods/Extend-squad-select-LWR/README.md) or download from [Nexus Mods](https://www.nexusmods.com/xcom/mods/448).
+Read documentation and installation ([LW](mods/Extend-squad-select-LW/README.md) or [LWR](mods/Extend-squad-select-LWR/README.md)) or download from [Nexus Mods](https://www.nexusmods.com/xcom/mods/448).
 
 
 ## License
