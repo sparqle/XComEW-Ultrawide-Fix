@@ -11,7 +11,7 @@ on ultrawide resolutions.
 
 1. Close the game.
 2. Confirm you have [Long War Rebalance](https://www.nexusmods.com/xcom/mods/686) installed.
-2. Confirm you have [Ultrawide resolution fix](https://www.nexusmods.com/xcom/mods/892) installed.
+2. If you play in an ultrawide resolution, confirm you have [Ultrawide resolution fix](https://www.nexusmods.com/xcom/mods/892) installed.
 3. Download and extract [PatcherGUI](https://www.nexusmods.com/xcom/mods/448).
 4. Download and extract mod file [Extend-squad-select-LWR](https://www.nexusmods.com/games/xcom/mods/894).
 5. Open PatcherGUI.

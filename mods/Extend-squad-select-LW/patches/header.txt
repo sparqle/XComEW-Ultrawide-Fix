@@ -1,0 +1,21 @@
+// ------------------------------------------------------------
+// XCOM: Enemy Within - Show eight soldiers in squad select screen (LW)
+//
+// - Requires "Long War" to be installed
+// - Requires "Ultrawide resolution fix" to be installed
+// - Add two extra soldiers to the squad select screen
+// - In ultrawide resolutions 8 squad members can be edited at once
+// - Small fix for odd-numbered capacity showing a stale card
+//
+// Download "Long War" mod: https://www.nexusmods.com/xcom/mods/88
+// Download "Ultrawide resolution fix" mod: https://www.nexusmods.com/xcom/mods/892
+// Install using PatcherGUI: https://www.nexusmods.com/xcom/mods/448
+//
+// ------------------------------------------------------------
+// Changelog 1.0.0:
+// - Initial release
+// ------------------------------------------------------------
+
+MOD_NAME = Show eight soldiers in squad select screen (LW)
+DESCRIPTION = Show eight soldiers in squad select screen, and allow editing 8 in ultrawide resolutions.
+AUTHOR = Sparq

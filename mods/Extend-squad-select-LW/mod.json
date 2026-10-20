@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "files": [
+    "patches/header.txt",
+    "../shared/squad-select/assign-new-animation-slots.txt",
+    "../shared/squad-select/extend-ui.txt",
+    "../shared/squad-select/animation-0-header.txt",
+    "../shared/squad-select/animation-1-add-entries.txt",
+    "../shared/squad-select/animation-2-add-objects.txt",
+    "../shared/squad-select/animation-3-edit-objects.txt"
+  ]
+}
