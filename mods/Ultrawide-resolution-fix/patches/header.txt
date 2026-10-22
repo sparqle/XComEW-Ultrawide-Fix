@@ -16,6 +16,9 @@
 // Install using PatcherGUI: https://www.nexusmods.com/xcom/mods/448
 //
 // ------------------------------------------------------------
+// Changelog 3.2.0:
+// - Fix placement of damage UI popups when more than one popup is visible
+//
 // Changelog 3.1.0:
 // - Prevent Build Facility hologram stretching
 //

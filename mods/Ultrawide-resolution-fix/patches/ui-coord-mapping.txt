@@ -2,8 +2,9 @@
 // Fix screen-to-UI and UI-to-screen coordinate mapping
 //
 // Replace:
-//   UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords (UI to screen)
-//   XComInputBase.ConvertUIPointToScreenCoordinate (bad name, does screen to UI)
+//   UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords (UI-to-screen)
+//   XComInputBase.ConvertUIPointToScreenCoordinate (bad name, does screen-to-UI)
+//   UIWorldMessageMgr.UpdateMessages (Was missing call to UI-to-screen conversion for multi-message update)
 //
 // Map between screen pixels and the game's 1280x720 UI canvas using
 // the smaller width/height scale and centering on both axes:
@@ -158,4 +159,65 @@ OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 // return kPoint;
 04 00 <.kPoint>
 04 3A <.ReturnValue>
+53
+
+// Use the same coordinate conversion as the patched UpdateMessageLocation.
+// The single-message path already delegates to UpdateMessageLocation.
+
+OBJECT = UIWorldMessageMgr.UpdateMessages : AUTO
+
+[REPLACEMENT_CODE]
+0F 00 <.Len> 36 01 <@m_arrActiveMessages>
+07 [@label_0x0025] 9A 00 <.Len> 25 16
+    04 0B
+[#label_0x0025]
+07 [@label_0x01B0] 9A 00 <.Len> 26 16
+    0F 00 <.kMsg> 10 10 25 01 <@m_arrActiveMessages> 01 <@m_arrMsgs>
+    07 [@label_0x010E] 19 2E <Class.XComPresentationLayer> 01 <Engine.Actor.Owner> [@] <XComPresentationLayer.isOnScreen.ReturnValue> 00 ( 1B <isOnScreen> 35 <UIWorldMessageMgr.THUDMsg.m_vLocation> <@THUDMsg> 00 00 00 <.kMsg> 00 <.vScreenLocation> 4A 4A 16 )
+        07 [@label_0x010B] 1B <UpdateMessageLocation> 00 <.kMsg> 00 <.vScreenLocation> 16
+            14 2D 35 <UIWorldMessageMgr.THUDMsg.m_bVisible> <@THUDMsg> 00 01 10 10 25 01 <@m_arrActiveMessages> 01 <@m_arrMsgs> 2D 35 <UIWorldMessageMgr.THUDMsg.m_bVisible> <@THUDMsg> 00 00 00 <.kMsg>
+        [#label_0x010B]
+        06 [@label_0x01AD]
+    [#label_0x010E]
+    07 [@label_0x01AD] 84 F2 2D 35 <UIWorldMessageMgr.THUDMsg.m_bVisible> <@THUDMsg> 00 00 00 <.kMsg> 27 16 18 [@] ( 2D 35 <UIWorldMessageMgr.THUDMsg.m_bIsImportantMessage> <@THUDMsg> 00 00 00 <.kMsg> 16 )
+        1C <@HideMessage> 00 <.kMsg> 16
+        14 2D 35 <UIWorldMessageMgr.THUDMsg.m_bVisible> <@THUDMsg> 00 01 10 10 25 01 <@m_arrActiveMessages> 01 <@m_arrMsgs> 2D 35 <UIWorldMessageMgr.THUDMsg.m_bVisible> <@THUDMsg> 00 00 00 <.kMsg>
+    [#label_0x01AD]
+    06 [@label_0x05B3]
+[#label_0x01B0]
+0F 00 <.I> 25
+[#label_0x01BB]
+07 [@label_0x0577] 96 00 <.I> 00 <.Len> 16
+    0F 00 <.kMsg> 10 10 00 <.I> 01 <@m_arrActiveMessages> 01 <@m_arrMsgs>
+    07 [@label_0x04C2] 19 2E <Class.XComPresentationLayer> 01 <Engine.Actor.Owner> [@] <XComPresentationLayer.isOnScreen.ReturnValue> 00 ( 1B <isOnScreen> 35 <UIWorldMessageMgr.THUDMsg.m_vLocation> <@THUDMsg> 00 00 00 <.kMsg> 00 <.vScreenLocation> 4A 4A 16 )
+        // vScreenLocation = manager.ConvertNormalizedUICoordsToScreenCoords(vScreenLocation.X, vScreenLocation.Y + kMsg.m_fVertDiff);
+        0F 00 <.vScreenLocation> 19 01 <UI_FxsPanel.manager> [@] <UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords.ReturnValue> 00 ( 1B <ConvertNormalizedUICoordsToScreenCoords> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.vScreenLocation> AE 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.vScreenLocation> 35 <UIWorldMessageMgr.THUDMsg.m_fVertDiff> <@THUDMsg> 00 00 00 <.kMsg> 16 16 )
+        0F 35 <GFxUI.GFxMoviePlayer.ASValue.Type> <GFxUI.GFxMoviePlayer.ASValue> 00 01 00 <.myValue> 24 03
+        0F 35 <GFxUI.GFxMoviePlayer.ASValue.S> <GFxUI.GFxMoviePlayer.ASValue> 00 01 00 <.myValue> 35 <UIWorldMessageMgr.THUDMsg.m_sId> <@THUDMsg> 00 00 00 <.kMsg>
+        55 00 <.myArray> [@] ( 00 <.myValue> 16 )
+        0F 35 <GFxUI.GFxMoviePlayer.ASValue.Type> <GFxUI.GFxMoviePlayer.ASValue> 00 01 00 <.myValue> 24 02
+        0F 35 <GFxUI.GFxMoviePlayer.ASValue.N> <GFxUI.GFxMoviePlayer.ASValue> 00 01 00 <.myValue> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.vScreenLocation>
+        55 00 <.myArray> [@] ( 00 <.myValue> 16 )
+        0F 35 <GFxUI.GFxMoviePlayer.ASValue.Type> <GFxUI.GFxMoviePlayer.ASValue> 00 01 00 <.myValue> 24 02
+        0F 35 <GFxUI.GFxMoviePlayer.ASValue.N> <GFxUI.GFxMoviePlayer.ASValue> 00 01 00 <.myValue> 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.vScreenLocation>
+        55 00 <.myArray> [@] ( 00 <.myValue> 16 )
+        0F 35 <GFxUI.GFxMoviePlayer.ASValue.Type> <GFxUI.GFxMoviePlayer.ASValue> 00 01 00 <.myValue> 24 04
+        14 2D 35 <GFxUI.GFxMoviePlayer.ASValue.B> <GFxUI.GFxMoviePlayer.ASValue> 00 01 00 <.myValue> 81 2D 35 <UIWorldMessageMgr.THUDMsg.m_bVisible> <@THUDMsg> 00 00 00 <.kMsg> 16
+        07 [@label_0x04A9] F2 2D 35 <UIWorldMessageMgr.THUDMsg.m_bVisible> <@THUDMsg> 00 00 00 <.kMsg> 28 16
+            14 2D 35 <UIWorldMessageMgr.THUDMsg.m_bVisible> <@THUDMsg> 00 01 10 10 00 <.I> 01 <@m_arrActiveMessages> 01 <@m_arrMsgs> 27
+        [#label_0x04A9]
+        55 00 <.myArray> [@] ( 00 <.myValue> 16 )
+        06 [@label_0x0569]
+    [#label_0x04C2]
+    07 [@label_0x0569] 84 F2 2D 35 <UIWorldMessageMgr.THUDMsg.m_bVisible> <@THUDMsg> 00 00 00 <.kMsg> 27 16 18 [@] ( 2D 35 <UIWorldMessageMgr.THUDMsg.m_bIsImportantMessage> <@THUDMsg> 00 00 00 <.kMsg> 16 )
+        1C <@HideMessage> 00 <.kMsg> 16
+        14 2D 35 <UIWorldMessageMgr.THUDMsg.m_bVisible> <@THUDMsg> 00 01 10 10 00 <.I> 01 <@m_arrActiveMessages> 01 <@m_arrMsgs> 2D 35 <UIWorldMessageMgr.THUDMsg.m_bVisible> <@THUDMsg> 00 00 00 <.kMsg>
+    [#label_0x0569]
+    A5 00 <.I> 16
+    06 [@label_0x01BB]
+[#label_0x0577]
+07 [@label_0x05B3] 97 36 00 <.myArray> 25 16
+    1B <Invoke> 1F <%t "UpdateMessageLocations"> 00 <.myArray> 4A 16
+[#label_0x05B3]
+04 0B
 53
