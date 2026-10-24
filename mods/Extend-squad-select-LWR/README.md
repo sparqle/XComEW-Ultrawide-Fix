@@ -62,7 +62,7 @@ Many thanks to the following utilities that made this mod possible:
 * [Nexus mods for XCOM](https://www.nexusmods.com/games/xcom): A great collection of mods and improvements, which
   showed that this fix was possible, and tools exist to do it.
 * [UPK Utils](https://github.com/wghost/UPKUtils): An amazing collection of tools for inspecting and modifying UPK files.
-* [GUI Patcher](https://github.com/wghost/GUIPatcher): The GUI interface to apply UPK patches for XCOM, which inspired
+* [PatcherGUI](https://github.com/wghost/PatcherGUI): The GUI interface to apply UPK patches for XCOM, which inspired
   this tool's interface.
 * [UE Explorer](https://github.com/UE-Explorer/UE-Explorer): For providing a way to show and search UnrealScript code
   inside UPK files.
