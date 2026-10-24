@@ -1,0 +1,14 @@
+// ------------------------------------------------------------
+// PHASE 2 - Modify entries, changing file length
+// ------------------------------------------------------------
+
+// Redirect only the dialogue class default, without changing screen identity.
+OBJECT = Default__UIDialogueBox : KEEP
+REL_OFFSET = 0
+FIND_CODE = <s_package> <NameProperty> <%u 8> <%u 0>
+// Write the tag, then the name through NAMEIDX to preserve its internal space.
+UPDATE_REL = TRUE
+[MODDED_CODE]
+<s_package> <NameProperty> <%u 8> <%u 0>
+NAMEIDX = / package/XComGame/DialogueBoxFix
+UPDATE_REL = FALSE

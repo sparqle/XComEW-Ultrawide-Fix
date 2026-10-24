@@ -1,0 +1,30 @@
+// ------------------------------------------------------------
+// Stretch Headquarters top menu bar to full width on ultrawide resolutions
+//
+// The Flash element facilityHeaderBracket needs to be stretched to fill the entire width of the screen.
+// ------------------------------------------------------------
+
+UPK_FILE = Command1.upk
+OBJECT = gfxStrategyHUD.StrategyHUD:AUTO
+
+[BEFORE_HEX]
+19 09 03 00 47 46 58 08 19 09 03 00 80 00 03 20 00 00 01 C2
+
+[AFTER_HEX]
+1A 09 03 00 47 46 58 08 1A 09 03 00 80 00 03 20 00 00 01 C2
+
+OBJECT=gfxStrategyHUD.StrategyHUD:AUTO
+
+[BEFORE_HEX]
+FF 09 8F 00 00 00 50 00 01 00 BF 06 16 00 00 00 26 01 00 4B
+
+[AFTER_HEX]
+FF 09 90 00 00 00 50 00 01 00 BF 06 16 00 00 00 26 01 00 4B
+
+OBJECT=gfxStrategyHUD.StrategyHUD:AUTO
+
+[BEFORE_HEX]
+BF 06 24 00 00 00 26 05 00 4F 00 C9 62 18 40 00 0C 4F F5 2F 66 61 63 69 6C 69 74 79 48 65 61 64 65 72 42 72 61 63 6B 65 74 00
+
+[AFTER_HEX]
+BF 06 25 00 00 00 26 05 00 4F 00 CD 09 92 10 00 08 18 B3 AA 5E 66 61 63 69 6C 69 74 79 48 65 61 64 65 72 42 72 61 63 6B 65 74 00

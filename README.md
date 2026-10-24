@@ -1,10 +1,10 @@
-# XCOM: Enemy Within - Ultrawide mods
+# Ultrawide mods for XCOM: Enemy Unknown and XCOM: Enemy Within 
 
-The code for two mods I made to improve ultrawide support in X-COM: Enemy Within.
+The code for two mods I made to improve ultrawide support the **XCOM: Enemy Unknown** base game and its DLC **XCOM: Enemy Within**.
 
 ## Ultrawide resolution fix
 
-An ultrawide resolution fix for **XCOM: Enemy Within**, **Long War** and **Long War Rebalance** to make it properly expand horizontally, turning it into a [Hor+](https://www.wsgf.org/article/screen-change) game.
+An ultrawide resolution fix for **XCOM: Enemy Unknown**, **XCOM: Enemy Within**, **Long War** and **Long War Rebalance** to make it properly expand horizontally, turning it into a [Hor+](https://www.wsgf.org/article/screen-change) game.
 
 It addresses several visual and input problems at wide aspect ratios:
 
@@ -13,7 +13,8 @@ It addresses several visual and input problems at wide aspect ratios:
 - Camera is a bit too zoomed out when on missions or main screen.
 - The health bars and other hovering UI elements don't follow units.
 
-Read [documentation and installation](mods/Ultrawide-resolution-fix/README.md) or download from [Nexus Mods](https://www.nexusmods.com/xcom/mods/892).
+Read the documentation for the  [Enemy Unknown](mods/Ultrawide-resolution-fix/README.md) base game mod or the [Enemy Within](mods/Ultrawide-resolution-fix/README.md) DLC mod.
+You can also download these mods from [Nexus Mods](https://www.nexusmods.com/xcom/mods/892).
 
 
 ## Extend squad select screen for (LW 1.0 and LWR only)

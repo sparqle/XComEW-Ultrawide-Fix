@@ -68,7 +68,10 @@ AUTHOR = Sparq
 
 UPK_FILE = XComGame.upk
 
-// Initialize all added locals before changing either function body.
+// ------------------------------------------------------------
+// PHASE 1 - Add entries (don't uninstall them)
+// ------------------------------------------------------------
+
 UNINSTALL = FALSE
 [ADD_NAME_ENTRY]
 <%u15> <%t"UW_kController"> <%u0> <%u0x00070010>
@@ -133,8 +136,12 @@ REL_OFFSET = 16
 // Local property flags.
 <%s1> <%s0> <%u0> <%u0> <None> <NullRef>
 
-// Record undo information for native flags and both function bodies.
 UNINSTALL = TRUE
+
+
+// ------------------------------------------------------------
+// PHASE 2 - Modify entries, changing file length
+// ------------------------------------------------------------
 
 OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate : AUTO
 
@@ -232,9 +239,6 @@ OBJECT = UIWorldMessageMgr.UpdateMessages : AUTO
     0F 00 <.kMsg> 10 10 00 <.I> 01 <@m_arrActiveMessages> 01 <@m_arrMsgs>
     07 [@label_0x04C2] 19 2E <Class.XComPresentationLayer> 01 <Engine.Actor.Owner> [@] <XComPresentationLayer.isOnScreen.ReturnValue> 00 ( 1B <isOnScreen> 35 <UIWorldMessageMgr.THUDMsg.m_vLocation> <@THUDMsg> 00 00 00 <.kMsg> 00 <.vScreenLocation> 4A 4A 16 )
         // vScreenLocation = manager.ConvertNormalizedUICoordsToScreenCoords(vScreenLocation.X, vScreenLocation.Y + kMsg.m_fVertDiff);
-        // Which replaced the following code below:
-        // - myValue.N = vScreenLocation.X * float(manager.UIMGR_RES_X);
-        // - myValue.N = (vScreenLocation.Y + kMsg.m_fVertDiff) * float(manager.UIMGR_RES_Y);
         0F 00 <.vScreenLocation> 19 01 <UI_FxsPanel.manager> [@] <UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords.ReturnValue> 00 ( 1B <ConvertNormalizedUICoordsToScreenCoords> 35 <Core.Object.Vector2D.X> <Core.Object.Vector2D> 00 00 00 <.vScreenLocation> AE 35 <Core.Object.Vector2D.Y> <Core.Object.Vector2D> 00 00 00 <.vScreenLocation> 35 <UIWorldMessageMgr.THUDMsg.m_fVertDiff> <@THUDMsg> 00 00 00 <.kMsg> 16 16 )
         0F 35 <GFxUI.GFxMoviePlayer.ASValue.Type> <GFxUI.GFxMoviePlayer.ASValue> 00 01 00 <.myValue> 24 03
         0F 35 <GFxUI.GFxMoviePlayer.ASValue.S> <GFxUI.GFxMoviePlayer.ASValue> 00 01 00 <.myValue> 35 <UIWorldMessageMgr.THUDMsg.m_sId> <@THUDMsg> 00 00 00 <.kMsg>

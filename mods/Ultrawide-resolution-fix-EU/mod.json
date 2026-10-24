@@ -1,0 +1,14 @@
+{
+  "version": "3.2.0",
+  "files": [
+    "patches/header.txt",
+    "../Ultrawide-resolution-fix/patches/ui-coord-mapping-add-objects.txt",
+    "patches/modal-box-center-add-objects.txt",
+    "../Ultrawide-resolution-fix/patches/ui-coord-mapping-edit-objects.txt",
+    "patches/modal-box-center-edit-objects.txt",
+    "../Ultrawide-resolution-fix/patches/fix-fov.txt",
+    "patches/extend-menu-bar.txt",
+    "patches/set-xcom-strat-upk.txt",
+    "../Ultrawide-resolution-fix/patches/fix-facility-hologram.txt"
+  ]
+}

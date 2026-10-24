@@ -1,0 +1,1 @@
+UPK_FILE = XComStrategyGame.upk

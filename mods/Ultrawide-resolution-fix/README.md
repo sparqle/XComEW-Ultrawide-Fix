@@ -25,8 +25,8 @@ Tested at 3440x1440 in **XCOM: Enemy Within**, **Long War** and **Long War Rebal
 
 * Fixes are general, so should work for untested game screens as well.
 * Will probably work for other ultrawide or super ultrawide resolutions.
-* XCOM: Enemy Unknown not supported (but it should be possible if there is interest)
 * Game still works fine on other aspect ratios, including narrow aspect ratios such as 5:4 or 4:3.
+* XCOM: Enemy Unknown is supported, but has its [own mod file and instructions](../Ultrawide-resolution-fix-EU/README.md)
 
 ## What was borked
 

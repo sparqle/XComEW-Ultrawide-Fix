@@ -1,0 +1,98 @@
+// ------------------------------------------------------------
+// Fix screen-to-UI and UI-to-screen coordinate mapping
+//
+// Replace:
+//   UIFxsMovie.ConvertNormalizedUICoordsToScreenCoords (UI-to-screen)
+//   XComInputBase.ConvertUIPointToScreenCoordinate (bad name, does screen-to-UI)
+//   UIWorldMessageMgr.UpdateMessages (Was missing call to UI-to-screen conversion for multi-message update)
+//
+// Map between screen pixels and the game's 1280x720 UI canvas using
+// the smaller width/height scale and centering on both axes:
+//
+//     Scale = Min(ScreenWidth / 1280.0, ScreenHeight / 720.0)
+//     OffsetX = (ScreenWidth - 1280.0 * Scale) * 0.5
+//     OffsetY = (ScreenHeight - 720.0 * Scale) * 0.5
+//
+//     Screen to UI (after converting normalized coordinates to pixels):
+//         UIX = (ScreenX - OffsetX) / Scale
+//         UIY = (ScreenY - OffsetY) / Scale
+//
+//     UI to screen:
+//         ScreenX = UIX * Scale + OffsetX
+//         ScreenY = UIY * Scale + OffsetY
+//
+// This keeps both conversions consistent, prevents horizontal stretching,
+// and preserves 16:9 behavior.
+// ------------------------------------------------------------
+
+UPK_FILE = XComGame.upk
+
+// ------------------------------------------------------------
+// PHASE 1 - Add entries (don't uninstall them)
+// ------------------------------------------------------------
+
+UNINSTALL = FALSE
+[ADD_NAME_ENTRY]
+<%u15> <%t"UW_kController"> <%u0> <%u0x00070010>
+
+[ADD_EXPORT_ENTRY]
+<Core.ObjectProperty> <NullRef> <XComInputBase.ConvertUIPointToScreenCoordinate> <UW_kController> <NullRef>
+<%u0> <%u0x00070004> <%u44> <%u0> <%u0> <%u0>
+<%u0> <%u0> <%u0> <%u0> <%u0>
+
+OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate.UW_kController
+REL_OFFSET = 16
+[MODDED_CODE]
+// ArrayDim=1; ElementSize=0.
+// Local property flags.
+// Add local UW_kLocalPlayer.
+<%s1> <%s0> <%u0> <%u0> <None> <NullRef> <Class.XComPlayerController>
+
+[ADD_NAME_ENTRY]
+<%u16> <%t"UW_kLocalPlayer"> <%u0> <%u0x00070010>
+
+[ADD_EXPORT_ENTRY]
+<Core.ObjectProperty> <NullRef> <XComInputBase.ConvertUIPointToScreenCoordinate> <UW_kLocalPlayer> <NullRef>
+<%u0> <%u0x00070004> <%u44> <%u0> <%u0> <%u0>
+<%u0> <%u0> <%u0> <%u0> <%u0>
+
+OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate.UW_kLocalPlayer
+REL_OFFSET = 16
+[MODDED_CODE]
+// ArrayDim=1; ElementSize=0.
+// Local property flags.
+// Add local UW_kSceneView.
+<%s1> <%s0> <%u0> <%u0> <None> <NullRef> <Class.XComLocalPlayer>
+
+[ADD_NAME_ENTRY]
+<%u14> <%t"UW_kSceneView"> <%u0> <%u0x00070010>
+
+[ADD_EXPORT_ENTRY]
+<Core.ObjectProperty> <NullRef> <XComInputBase.ConvertUIPointToScreenCoordinate> <UW_kSceneView> <NullRef>
+<%u0> <%u0x00070004> <%u44> <%u0> <%u0> <%u0>
+<%u0> <%u0> <%u0> <%u0> <%u0>
+
+OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate.UW_kSceneView
+REL_OFFSET = 16
+[MODDED_CODE]
+// ArrayDim=1; ElementSize=0.
+// Local property flags.
+// Add local UW_Scale.
+<%s1> <%s0> <%u0> <%u0> <None> <NullRef> <Class.ScriptSceneView>
+
+[ADD_NAME_ENTRY]
+<%u9> <%t"UW_Scale"> <%u0> <%u0x00070010>
+
+[ADD_EXPORT_ENTRY]
+<Core.FloatProperty> <NullRef> <XComInputBase.ConvertUIPointToScreenCoordinate> <UW_Scale> <NullRef>
+<%u0> <%u0x00070004> <%u40> <%u0> <%u0> <%u0>
+<%u0> <%u0> <%u0> <%u0> <%u0>
+
+OBJECT = XComInputBase.ConvertUIPointToScreenCoordinate.UW_Scale
+REL_OFFSET = 16
+[MODDED_CODE]
+// ArrayDim=1; ElementSize=0.
+// Local property flags.
+<%s1> <%s0> <%u0> <%u0> <None> <NullRef>
+
+UNINSTALL = TRUE
