@@ -1,5 +1,29 @@
 # Build mod releases
 
+To search UPK names in a directory or a single package, run:
+
+```powershell
+.\tools\upk-search-names.ps1 'C:\Packages' 'soldier|hangar' -IgnoreCase
+.\tools\upk-search-names.ps1 'C:\Packages\XComGame.upk' 'soldier|hangar' -IgnoreCase
+```
+
+Directory searches include only `.upk` files directly inside that directory.
+The first argument also accepts `-Path`; the existing `-Directory` name remains
+an alias. Matches are printed as `filename:line:matching-text`.
+Exit codes are 0 for matches, 1 for no
+matches, and 2 for errors.
+
+To decompile a UPK method to pseudo-code, run:
+
+```powershell
+.\tools\upk-hex-to-pseudocode.ps1 'C:\Packages\XComGame.upk' 'ClassName.MethodName'
+```
+
+The script decompresses the package in a temporary directory when needed and
+prints the pseudo-code to standard output. The original package is preserved.
+It looks for `DecompressLZO.exe` and `HexToPseudoCode.exe` beside the script,
+in `../third-party` relative to the script, then on `PATH`.
+
 Run from the project root:
 
 ```powershell

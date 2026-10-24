@@ -1,9 +1,11 @@
 # Requires Windows PowerShell 5.1 or PowerShell 7 on Windows.
-# Usage: .\search-upk-names.ps1 'C:\Packages' 'soldier|hangar' -IgnoreCase
+# Usage: .\upk-search-names.ps1 'C:\Packages' 'soldier|hangar' -IgnoreCase
+#        .\upk-search-names.ps1 'C:\Packages\XComGame.upk' 'soldier|hangar' -IgnoreCase
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [string]$Directory,
+    [Alias('Directory')]
+    [string]$Path,
 
     [Parameter(Mandatory = $true, Position = 1)]
     [string]$Pattern,
@@ -14,48 +16,26 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-function Find-Tool([string]$Name) {
-    $local = Join-Path $PSScriptRoot $Name
-    if (Test-Path -LiteralPath $local -PathType Leaf) {
-        return $local
-    }
-    $command = Get-Command $Name -CommandType Application -ErrorAction SilentlyContinue |
-        Select-Object -First 1
-    if (-not $command) {
-        throw "Put $Name beside this script or on PATH."
-    }
-    return $command.Source
-}
-
-function Invoke-Tool([string]$Exe, [string[]]$Paths, [string]$WorkDir) {
-    # Windows file paths cannot contain double quotes. Quote every argument
-    # because Start-Process joins ArgumentList into a single command line.
-    $quotedPaths = @($Paths | ForEach-Object { '"' + $_ + '"' })
-    $stdout = Join-Path $WorkDir 'stdout.txt'
-    $stderr = Join-Path $WorkDir 'stderr.txt'
-    $process = Start-Process -FilePath $Exe -ArgumentList $quotedPaths `
-        -WorkingDirectory $WorkDir -NoNewWindow -Wait -PassThru `
-        -RedirectStandardOutput $stdout -RedirectStandardError $stderr
-    [pscustomobject]@{
-        ExitCode = $process.ExitCode
-        Output = [System.IO.File]::ReadAllText($stdout)
-        ErrorOutput = [System.IO.File]::ReadAllText($stderr)
-    }
-}
+. (Join-Path $PSScriptRoot 'upk-common.ps1')
 
 try {
-    if (-not (Test-Path -LiteralPath $Directory -PathType Container)) {
-        throw "Not a directory: $Directory"
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "Not a file or directory: $Path"
     }
     $options = [System.Text.RegularExpressions.RegexOptions]::None
     if ($IgnoreCase) {
         $options = [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
     }
     $regex = [regex]::new($Pattern, $options)
-    $decompress = Find-Tool 'DecompressLZO.exe'
-    $extract = Find-Tool 'ExtractNameLists.exe'
-    $packages = @(Get-ChildItem -LiteralPath $Directory -File |
-        Where-Object { $_.Extension -ieq '.upk' } | Sort-Object Name)
+    $inputItem = Get-Item -LiteralPath $Path
+    if ($inputItem.PSIsContainer) {
+        $packages = @(Get-ChildItem -LiteralPath $Path -File |
+            Where-Object { $_.Extension -ieq '.upk' } | Sort-Object Name)
+    } elseif ($inputItem.Extension -ieq '.upk') {
+        $packages = @($inputItem)
+    } else {
+        throw "Not a .upk file: $Path"
+    }
 } catch {
     [Console]::Error.WriteLine($_.Exception.Message)
     exit 2
@@ -66,6 +46,9 @@ if ($packages.Count -eq 0) {
     exit 1
 }
 
+$decompress = Find-Tool 'DecompressLZO.exe'
+$extract = Find-Tool 'ExtractNameLists.exe'
+
 $matched = $false
 $failed = $false
 foreach ($package in $packages) {
@@ -73,20 +56,13 @@ foreach ($package in $packages) {
     try {
         $temp = Join-Path ([System.IO.Path]::GetTempPath()) ('upk_names_' + [guid]::NewGuid())
         $null = New-Item -ItemType Directory -Path $temp
-        $unpacked = Join-Path $temp $package.Name
-        $result = Invoke-Tool $decompress @($package.FullName, $unpacked) $temp
-        $extractInput = $unpacked
-        if ($result.ExitCode -ne 0 -or
-            -not [string]::IsNullOrWhiteSpace($result.ErrorOutput) -or
-            $result.Output -match '\berror\b' -or
-            -not (Test-Path -LiteralPath $unpacked -PathType Leaf)) {
-            # Already-decompressed packages can be read directly.
-            $extractInput = $package.FullName
-        }
+        $extractInput = Get-UpkToolInput $decompress $package $temp
         $result = Invoke-Tool $extract @($extractInput) $temp
         if ($result.ExitCode -ne 0) {
             throw "ExtractNameLists exited with code $($result.ExitCode).`n$($result.Output)$($result.ErrorOutput)"
         }
+
+        # Find regexp
         $number = 0
         foreach ($line in ($result.Output -split '\r\n|\n|\r')) {
             $number++
