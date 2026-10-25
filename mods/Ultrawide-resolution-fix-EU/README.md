@@ -44,7 +44,7 @@ Unfortunately, Startup.upk is one of the files that is hash checked, but Patcher
 This means that fixing the Dialogue UI in Startup.upk would require a fix in PatcherGUI or a custom executable patch.
 
 As PatcherGUI hasn't been updated in 8 years, and including an executable in our own mod would require a manual
-review by nexusmods, we opt for a second approach: We add the fixed Dialogue UI in its entirety into XComGame.upk,
+review by Nexus Mods, we opt for a second approach: We add the fixed Dialogue UI in its entirety into XComGame.upk,
 and make its UnrealScript use that instance instead of the broken one in Startup.upk.
 
 ## License
@@ -57,7 +57,7 @@ The source repository retains the tools, licenses, and corresponding source in `
 
 Many thanks to the following utilities that made this fix possible:
 
-* [Nexus mods for XCOM](https://www.nexusmods.com/games/xcom): A great collection of mods and improvements, which
+* [Nexus Mods for XCOM](https://www.nexusmods.com/games/xcom): A great collection of mods and improvements, which
   showed that this fix was possible, and tools exist to do it.
 * [UPK Utils](https://github.com/wghost/UPKUtils): An amazing collection of tools for inspecting and modifying UPK files.
 * [PatcherGUI](https://github.com/wghost/PatcherGUI): The GUI interface to apply UPK patches for XCOM, which inspired

@@ -13,7 +13,7 @@ It addresses several visual and input problems at wide aspect ratios:
 - Camera is a bit too zoomed out when on missions or main screen.
 - The health bars and other hovering UI elements don't follow units.
 
-Read the documentation for the  [Enemy Unknown](mods/Ultrawide-resolution-fix/README.md) base game mod or the [Enemy Within](mods/Ultrawide-resolution-fix/README.md) DLC mod.
+Read the documentation for the [Enemy Unknown](mods/Ultrawide-resolution-fix-EU/README.md) base game mod or the [Enemy Within](mods/Ultrawide-resolution-fix/README.md) DLC mod.
 You can also download these mods from [Nexus Mods](https://www.nexusmods.com/xcom/mods/892).
 
 
@@ -39,7 +39,7 @@ The source repository retains the tools, licenses, and corresponding source in `
 
 Many thanks to the following free utilities that made modding possible:
 
-* [Nexus mods for XCOM](https://www.nexusmods.com/games/xcom): A great collection of mods and improvements, which
+* [Nexus Mods for XCOM](https://www.nexusmods.com/games/xcom): A great collection of mods and improvements, which
   showed that this fix was possible, and tools exist to do it.
 * [UPK Utils](https://github.com/wghost/UPKUtils): An amazing collection of tools for inspecting and modifying UPK files.
 * [PatcherGUI](https://github.com/wghost/PatcherGUI): The GUI interface to apply UPK patches for XCOM, which inspired
