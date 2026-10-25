@@ -30,8 +30,8 @@ Tested at 3440x1440 in **XCOM: Enemy Unknown**: starting missions and screens.
 
 ## What was borked
 
-See the [The Enemy Withing borked ](../Ultrawide-resolution-fix/README.md#what-was-borked) section, for the explanation of the base
-fixes required. See below for the main additional fix required.
+See the Enemy Within mod [What was borked](../Ultrawide-resolution-fix/README.md#what-was-borked) section, both game versions
+mostly share the same shortcomings. Below I describe the main additional fix required.
 
 ### Avoid patching Startup.upk
 
